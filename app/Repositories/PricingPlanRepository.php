@@ -656,10 +656,11 @@ class PricingPlanRepository extends BaseRepository
             'emailTransaction' => !empty($user->email),
             'paymentCurrency' => $pricingPlan->currency,
             'paymentAmount' => $pricingPlan->price->amount,
-            'backURL' => 'https://www.videocopilot.net',
-            'redirectURL' => 'https://www.videocopilot.net' /* route('verify.pricing.plan.payment', [
+            'backURL' => url()->previous(),
+            'redirectURL' => route('verify.pricing.plan.payment', [
+                'pricingPlanId' => $pricingPlan->id,
                 'transactionId' => $transaction->id
-            ])*/,
+            ]),
             'services' => [
                 [
                     'serviceDescription' => $pricingPlan->name,
