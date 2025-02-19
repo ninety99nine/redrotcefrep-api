@@ -49,6 +49,9 @@ class CreateProductsTable extends Migration
             $table->unsignedTinyInteger('total_variations')->nullable();
             $table->unsignedTinyInteger('total_visible_variations')->nullable();
 
+            /*  Weight Information  */
+            $table->decimal('unit_weight', 10, 2)->default(0);
+
             /*  Pricing Information  */
             $table->boolean('is_free')->default(false);
             $table->char('currency', 3)->default(config('app.DEFAULT_CURRENCY'));

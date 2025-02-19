@@ -26,8 +26,13 @@ class CreateStoresTable extends Migration
             $table->string('ussd_mobile_number', 20)->nullable();
             $table->string('contact_mobile_number', 20)->nullable();
             $table->string('whatsapp_mobile_number', 20)->nullable();
-            $table->enum('call_to_action', Store::CALL_TO_ACTION_OPTIONS())->default(CallToAction::BUY);
+            $table->string('call_to_action', Store::CALL_TO_ACTION_MAX_CHARACTERS)->nullable();
             $table->string('description', Store::DESCRIPTION_MAX_CHARACTERS)->nullable();
+            $table->string('qr_code_file_path')->nullable();
+
+            $table->boolean('offer_rewards')->default(false);
+            $table->decimal('reward_percentage_rate', 5, 2)->default(0);
+
             $table->json('social_links')->nullable();
             $table->char('country', 2)->default(config('app.DEFAULT_COUNTRY'));
             $table->char('currency', 3)->default(config('app.DEFAULT_CURRENCY'));
@@ -67,6 +72,8 @@ class CreateStoresTable extends Migration
             $table->boolean('has_automated_payment_methods')->default(false);
 
             $table->string('sms_sender_name', Store::SMS_SENDER_NAME_MAX_CHARACTERS)->nullable();
+
+            $table->json('tips')->nullable();
 
             /* Add Timestamps */
             $table->timestamps();

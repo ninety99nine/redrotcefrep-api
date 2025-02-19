@@ -26,6 +26,8 @@ class AppServiceProvider extends ServiceProvider
             'user' => 'App\Models\User',
             'order' => 'App\Models\Order',
             'store' => 'App\Models\Store',
+            'module' => 'App\Models\Module',
+            'product' => 'App\Models\Product',
             'product' => 'App\Models\Product',
             'customer' => 'App\Models\Customer',
             'sms alert' => 'App\Models\SmsAlert',
@@ -34,6 +36,7 @@ class AppServiceProvider extends ServiceProvider
             'pricing plan' => 'App\Models\PricingPlan',
             'subscription' => 'App\Models\Subscription',
             'delivery method' => 'App\Models\DeliveryMethod',
+            'store payment method' => 'App\Models\Pivots\StorePaymentMethod',
         ]);
 
         /*

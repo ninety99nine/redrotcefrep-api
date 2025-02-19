@@ -18,23 +18,13 @@ class CreatePaymentMethodsTable extends Migration
 
             $table->uuid('id')->primary();
 
-            /*  Basic Information  */
             $table->boolean('active')->default(0);
             $table->string('name', PaymentMethod::NAME_MAX_CHARACTERS);
             $table->string('type', PaymentMethod::TYPE_MAX_CHARACTERS);
-            $table->enum('category', PaymentMethod::PAYMENT_METHOD_CATEGORIES());
-            $table->string('instruction', PaymentMethod::INSTRUCTION_MAX_CHARACTERS)->nullable();
-            $table->json('countries')->nullable();
-            $table->json('metadata')->nullable();
-            $table->boolean('contact_seller_before_payment')->default(0);
-            $table->boolean('require_proof_of_payment')->default(0);
-            $table->boolean('automatically_mark_as_paid')->default(0);
-
-            /*  Arrangement Information  */
+            $table->boolean('automated_verification')->default(0);
+            $table->json('supported_countries')->nullable();
+            $table->json('config_schema')->nullable();
             $table->unsignedTinyInteger('position')->nullable();
-
-            /*  Ownership Information  */
-            $table->foreignUuid('store_id')->nullable();
 
             /*  Timestamps  */
             $table->timestamps();
@@ -42,11 +32,6 @@ class CreatePaymentMethodsTable extends Migration
             /* Add Indexes */
             $table->index('name');
             $table->index('type');
-            $table->index('category');
-            $table->index('store_id');
-
-            /* Foreign Key Constraints */
-            $table->foreign('store_id')->references('id')->on('stores')->cascadeOnDelete();
 
         });
     }

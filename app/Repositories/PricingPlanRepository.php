@@ -15,6 +15,7 @@ use App\Traits\Base\BaseTrait;
 use App\Enums\PaymentMethodType;
 use Illuminate\Support\Collection;
 use App\Traits\MessageCrafterTrait;
+use Illuminate\Http\RedirectResponse;
 use App\Enums\TransactionFailureType;
 use App\Enums\TransactionPaymentStatus;
 use Illuminate\Database\Eloquent\Builder;
@@ -174,105 +175,104 @@ class PricingPlanRepository extends BaseRepository
      */
     public function payPricingPlan(string $pricingPlanId, array $data): array
     {
+        $store = $aiAssistant = null;
+        $pricingPlan = PricingPlan::find($pricingPlanId);
+        if(!$pricingPlan) return ['successful' => false, 'message' => 'This pricing plan does not exist'];
 
-            $store = $aiAssistant = null;
-            $pricingPlan = PricingPlan::find($pricingPlanId);
-            if(!$pricingPlan) return ['successful' => false, 'message' => 'This pricing plan does not exist'];
+        if( $this->offersStoreSubscription($pricingPlan) ||
+            $this->offersWhatsappCredits($pricingPlan) ||
+            $this->offersEmailCredits($pricingPlan) ||
+            $this->offersSmsCredits($pricingPlan)
+        ) {
+            if(!isset($data['store_id'])) throw ValidationException::withMessages(['store_id' => 'The store id field is required']);
+            $store = Store::find($data['store_id']);
 
-            if( $this->offersStoreSubscription($pricingPlan) ||
-                $this->offersWhatsappCredits($pricingPlan) ||
-                $this->offersEmailCredits($pricingPlan) ||
-                $this->offersSmsCredits($pricingPlan)
-            ) {
-                if(!isset($data['store_id'])) throw ValidationException::withMessages(['store_id' => 'The store id field is required']);
-                $store = Store::find($data['store_id']);
+            if($store) {
+                $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+                if(!$isAuthourized) return ['successful' => false, 'message' => 'You do not have permission to pay'];
+            }else{
+                return ['successful' => false, 'message' => 'This store does not exist'];
+            }
 
-                if($store) {
-                    $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
-                    if(!$isAuthourized) return ['successful' => false, 'message' => 'You do not have permission to pay'];
+        }
+
+        if( $this->offersAiAssistantSubscription($pricingPlan) ||
+            $this->offersAiAssistantTopUpCredits($pricingPlan)) {
+
+            $aiAssistant = request()->current_user->aiAssistant()->first();
+            if(!$aiAssistant) return ['successful' => false, 'message' => 'This AI Assistant does not exist'];
+
+        }
+
+        $paymentMethodId = $data['payment_method_id'] ?? null;
+        $paymentMethodType = $data['payment_method_type'] ?? null;
+
+        if($paymentMethodId) {
+            /** @var PaymentMethod|null $paymentMethod */
+            $paymentMethod = PaymentMethod::find($paymentMethodId);
+            if(!$paymentMethod) return ['successful' => false, 'message' => 'The specified payment method does not exist'];
+        }else if($paymentMethodType) {
+            /** @var PaymentMethod|null $paymentMethod */
+            $paymentMethod = PaymentMethod::whereType($paymentMethodType)->first();
+            if(!$paymentMethod) return ['successful' => false, 'message' => 'The specified payment method does not exist'];
+        }
+
+        if(!$paymentMethod->automated_verification) return ['successful' => false, 'message' => 'The '.$paymentMethod->name.' payment method is not an automated method of payment'];
+
+        if(!$paymentMethod->active) return ['successful' => false, 'message' => 'The '.$paymentMethod->name.' payment method has been deactivated'];
+
+        $acceptablePaymentMethodTypes = [PaymentMethodType::DPO->value, PaymentMethodType::ORANGE_AIRTIME->value];
+
+        if(in_array($paymentMethod->type, $acceptablePaymentMethodTypes)) {
+
+            $transactionPayload = $this->prepareTransactionPayload($store, $aiAssistant, $pricingPlan, $paymentMethod);
+            $transaction = $this->getTransactionRepository()->authourize()->shouldReturnModel()->createTransaction($transactionPayload);
+
+            $transaction->setRelation('owner', $pricingPlan);
+            if($store) $transaction->setRelation('store', $store);
+            if($aiAssistant) $transaction->setRelation('aiAssistant', $aiAssistant);
+
+            if($paymentMethod->isDPO()) {
+
+                $companyToken = config('app.DPO_COMPANY_TOKEN');
+                $dpoPaymentLinkPayload = $this->prepareDpoPaymentLinkPayload($transaction);
+                $response = DirectPayOnlineService::createPaymentLink($companyToken, $dpoPaymentLinkPayload);
+
+                if($response['created']) {
+                    $metadata = $response['data'];
                 }else{
-                    return ['successful' => false, 'message' => 'This store does not exist'];
+                    return ['requested' => false, 'message' => $response['message']];
                 }
 
-            }
+                $transaction->update(['metadata' => $metadata]);
 
-            if( $this->offersAiAssistantSubscription($pricingPlan) ||
-                $this->offersAiAssistantTopUpCredits($pricingPlan)) {
+                return [
+                    'successful' => true,
+                    'message' => 'DPO payment link created',
+                    'transaction' => new TransactionResource($this->getTransactionRepository()->applyEagerLoadingOnModel($transaction))
+                ];
 
-                $aiAssistant = request()->current_user->aiAssistant()->first();
-                if(!$aiAssistant) return ['successful' => false, 'message' => 'This AI Assistant does not exist'];
+            }else if($paymentMethod->isOrangeAirtime()) {
 
-            }
+                $mobileNetworkProductId = $pricingPlan->type;
+                $msisdn = $this->getAuthUser()->mobile_number->formatE164();
+                $transaction = OrangeAirtimeService::billUsingAirtime($msisdn, $mobileNetworkProductId, $transaction);
 
-            $paymentMethodId = $data['payment_method_id'] ?? null;
-            $paymentMethodType = $data['payment_method_type'] ?? null;
-
-            if($paymentMethodId) {
-                /** @var PaymentMethod|null $paymentMethod */
-                $paymentMethod = PaymentMethod::whereNull('store_id')->whereId($paymentMethodId)->first();
-                if(!$paymentMethod) return ['successful' => false, 'message' => 'The specified payment method does not exist'];
-            }else if($paymentMethodType) {
-                /** @var PaymentMethod|null $paymentMethod */
-                $paymentMethod = PaymentMethod::whereNull('store_id')->whereType($paymentMethodType)->first();
-                if(!$paymentMethod) return ['successful' => false, 'message' => 'The specified payment method does not exist'];
-            }
-
-            if(!$paymentMethod->isAutomated()) return ['successful' => false, 'message' => 'The '.$paymentMethod->name.' payment method is not an automated method of payment'];
-            if(!$paymentMethod->active) return ['successful' => false, 'message' => 'The '.$paymentMethod->name.' payment method has been deactivated'];
-
-            $acceptablePaymentMethodTypes = [PaymentMethodType::DPO->value, PaymentMethodType::ORANGE_AIRTIME->value];
-
-            if(in_array($paymentMethod->type, $acceptablePaymentMethodTypes)) {
-
-                $transactionPayload = $this->prepareTransactionPayload($store, $aiAssistant, $pricingPlan, $paymentMethod);
-                $transaction = $this->getTransactionRepository()->authourize()->shouldReturnModel()->createTransaction($transactionPayload);
-
-                $transaction->setRelation('owner', $pricingPlan);
-                if($store) $transaction->setRelation('store', $store);
-                if($aiAssistant) $transaction->setRelation('aiAssistant', $aiAssistant);
-
-                if($paymentMethod->isDPO()) {
-
-                    $companyToken = $paymentMethod->metadata['company_token'];
-                    $dpoPaymentLinkPayload = $this->prepareDpoPaymentLinkPayload($transaction);
-                    $response = DirectPayOnlineService::createPaymentLink($companyToken, $dpoPaymentLinkPayload);
-
-                    if($response['created']) {
-                        $metadata = $response['data'];
-                    }else{
-                        return ['requested' => false, 'message' => $response['message']];
-                    }
-
-                    $transaction->update(['metadata' => $metadata]);
-
+                if($transaction->payment_status == TransactionPaymentStatus::FAILED_PAYMENT->value) {
                     return [
-                        'successful' => true,
-                        'message' => 'DPO payment link created',
+                        'successful' => false,
+                        'message' => $transaction->failure_reason ?? $transaction->failure_type,
                         'transaction' => new TransactionResource($this->getTransactionRepository()->applyEagerLoadingOnModel($transaction))
                     ];
-
-                }else if($paymentMethod->isOrangeAirtime()) {
-
-                    $mobileNetworkProductId = $pricingPlan->type;
-                    $msisdn = $this->getAuthUser()->mobile_number->formatE164();
-                    $transaction = OrangeAirtimeService::billUsingAirtime($msisdn, $mobileNetworkProductId, $transaction);
-
-                    if($transaction->payment_status == TransactionPaymentStatus::FAILED_PAYMENT->value) {
-                        return [
-                            'successful' => false,
-                            'message' => $transaction->failure_reason ?? $transaction->failure_type,
-                            'transaction' => new TransactionResource($this->getTransactionRepository()->applyEagerLoadingOnModel($transaction))
-                        ];
-                    }
-
                 }
 
-                return $this->offerPricingPlan($store, $aiAssistant, $pricingPlan, $transaction);
-
-            }else{
-                return ['successful' => false, 'message' => 'The specified payment method cannot be used for this payment'];
             }
 
+            return $this->offerPricingPlan($store, $aiAssistant, $pricingPlan, $transaction);
+
+        }else{
+            return ['successful' => false, 'message' => 'The specified payment method cannot be used for this payment'];
+        }
     }
 
     /**
@@ -280,9 +280,9 @@ class PricingPlanRepository extends BaseRepository
      *
      * @param string $pricingPlanId
      * @param string $transactionId
-     * @return View|array
+     * @return RedirectResponse|array
      */
-    public function verifyPricingPlanPayment(string $pricingPlanId, string $transactionId): View|array
+    public function verifyPricingPlanPayment(string $pricingPlanId, string $transactionId): RedirectResponse|array
     {
         try{
 
@@ -318,7 +318,7 @@ class PricingPlanRepository extends BaseRepository
 
                 if($paymentMethod->isDpo()) {
 
-                    $companyToken = $paymentMethod->metadata['company_token'];
+                    $companyToken = config('app.DPO_COMPANY_TOKEN');
                     $transactionToken = $transaction->metadata['dpo_transaction_token'];
                     $metadata = DirectPayOnlineService::verifyPayment($companyToken, $transactionToken);
 
@@ -340,7 +340,7 @@ class PricingPlanRepository extends BaseRepository
             if(request()->wantsJson()) {
                 return $this->showSavedResource($transaction, 'verified');
             }else{
-                return view('payment-success', ['transaction' => $transaction]);
+                return redirect(config('app.FRONTEND_URI') . '/dashboard/stores/' . route('show.store', ['storeId' => $store->id]) . '/transaction-outcome' . '?transactionId=' . $transactionId . '&status=successful');
             }
 
         }catch(Exception $e) {
@@ -354,7 +354,7 @@ class PricingPlanRepository extends BaseRepository
             if(request()->wantsJson()) {
                 return ['verified' => false, 'message' => $e->getMessage()];
             }else{
-                return view('payment-failure', ['failureReason' =>  $e->getMessage(), 'transaction' => $transaction]);
+                return redirect(config('app.FRONTEND_URI') . '/dashboard/stores/' . route('show.store', ['storeId' => $store->id]) . '/transaction-outcome' . '?transactionId=' . $transactionId . '&status=failed' . '&failureReason='.$e->getMessage());
             }
 
         }
@@ -644,6 +644,7 @@ class PricingPlanRepository extends BaseRepository
             'ptlType' => 'hours',
             'companyRefUnique' => 1,
             'metadata' => $metadata,
+            'emailTransaction' => true,
             'customerEmail' => $user->email,
             'companyRef' => $transaction->id,
             'companyAccRef' => $companyAccRef,
@@ -655,8 +656,6 @@ class PricingPlanRepository extends BaseRepository
             'emailTransaction' => !empty($user->email),
             'paymentCurrency' => $pricingPlan->currency,
             'paymentAmount' => $pricingPlan->price->amount,
-            'emailTransaction' => $paymentMethod->email_payment_request,
-            'customerCountry' => $customerCountry ?? $paymentMethod->default_country_code,
             'backURL' => 'https://www.videocopilot.net',
             'redirectURL' => 'https://www.videocopilot.net' /* route('verify.pricing.plan.payment', [
                 'transactionId' => $transaction->id

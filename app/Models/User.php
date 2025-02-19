@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\UserTrait;
+use App\Enums\RequestFileName;
 use Laravel\Sanctum\HasApiTokens;
 use App\Services\Ussd\UssdService;
 use App\Casts\E164PhoneNumberCast;
@@ -168,7 +169,7 @@ class User extends BaseAuthenticatable /* Authenticatable */
 
     public function profilePhoto()
     {
-        return $this->morphOne(MediaFile::class, 'mediable')->where('type', 'profile_photo');
+        return $this->morphOne(MediaFile::class, 'mediable')->where('type', RequestFileName::PROFILE_PHOTO->value);
     }
 
     public function placedOrders()

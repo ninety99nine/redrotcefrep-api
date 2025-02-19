@@ -9,4 +9,7 @@ enum Association:string {
     case TEAM_MEMBER = 'team member';
     case SUPER_ADMIN = 'super admin';
     case RECENT_VISITOR = 'recent visitor';
+
+    case ASSOCIATED = 'associated';
+    case UNASSOCIATED = 'unassociated';
 }

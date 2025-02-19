@@ -11,6 +11,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use App\Http\Resources\MediaFileResources;
+use App\Models\Module;
 use App\Models\Product;
 use App\Models\Store;
 use Illuminate\Database\Eloquent\Collection;
@@ -131,19 +132,27 @@ class MediaFileRepository extends BaseRepository
      */
     public function updateMediaFile(MediaFile|string $mediaFileId): MediaFile|array
     {
-        $mediaFile = $mediaFileId instanceof MediaFile ? $mediaFileId->loadMissing(['owner']) : MediaFile::with(['owner'])->find($mediaFileId);
+        $mediaFile = $mediaFileId instanceof MediaFile ? $mediaFileId->loadMissing(['mediable']) : MediaFile::with(['mediable'])->find($mediaFileId);
 
         if($mediaFile) {
 
-            $owner = $mediaFile->owner;
+            if(!$this->isAuthourized()) {
 
-            if(($store = $owner) instanceof Store) {
-                $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
-                if(!$isAuthourized) return ['updated' => false, 'message' => 'You do not have permission to update media file'];
-            }else if(($product = $owner) instanceof Product) {
-                $store = $product->store;
-                $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
-                if(!$isAuthourized) return ['updated' => false, 'message' => 'You do not have permission to update media file'];
+                $mediable = $mediaFile->mediable;
+
+                if(($store = $mediable) instanceof Store) {
+                    $isAuthourized = $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+                    if(!$isAuthourized) return ['updated' => false, 'message' => 'You do not have permission to update media file'];
+                }else if(($product = $mediable) instanceof Product) {
+                    $store = $product->store;
+                    $isAuthourized = $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+                    if(!$isAuthourized) return ['updated' => false, 'message' => 'You do not have permission to update media file'];
+                }else if(($module = $mediable) instanceof Module) {
+                    $store = $module->store;
+                    $isAuthourized = $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+                    if(!$isAuthourized) return ['updated' => false, 'message' => 'You do not have permission to update media file'];
+                }
+
             }
 
             $fileName = $mediaFile->type;
@@ -163,6 +172,8 @@ class MediaFileRepository extends BaseRepository
                 $mediaFilePayload = $this->prepareMediaFilePayload($requestFileName, $file, $filePath);
                 $mediaFile->update($mediaFilePayload);
 
+                if(!$this->checkIfHasRelationOnRequest('mediable')) $mediaFile->unsetRelation('mediable');
+
                 return $this->showUpdatedResource($mediaFile);
 
             }else{
@@ -171,6 +182,7 @@ class MediaFileRepository extends BaseRepository
                     'message' => 'No file provided',
                 ];
             }
+
         }else{
             return ['updated' => false, 'message' => 'This media file does not exist'];
         }
@@ -184,19 +196,27 @@ class MediaFileRepository extends BaseRepository
      */
     public function deleteMediaFile(string|MediaFile $mediaFileId): array
     {
-        $mediaFile = $mediaFileId instanceof MediaFile ? $mediaFileId->loadMissing(['owner']) : MediaFile::with(['owner'])->find($mediaFileId);
+        $mediaFile = $mediaFileId instanceof MediaFile ? $mediaFileId->loadMissing(['mediable']) : MediaFile::with(['mediable'])->find($mediaFileId);
 
         if($mediaFile) {
 
-            $owner = $mediaFile->owner;
+            if(!$this->isAuthourized()) {
 
-            if(($store = $owner) instanceof Store) {
-                $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
-                if(!$isAuthourized) return ['delete' => false, 'message' => 'You do not have permission to delete media file'];
-            }else if(($product = $owner) instanceof Product) {
-                $store = $product->store;
-                $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
-                if(!$isAuthourized) return ['delete' => false, 'message' => 'You do not have permission to delete media file'];
+                $mediable = $mediaFile->mediable;
+
+                if(($store = $mediable) instanceof Store) {
+                    $isAuthourized = $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+                    if(!$isAuthourized) return ['deleted' => false, 'message' => 'You do not have permission to delete media file'];
+                }else if(($product = $mediable) instanceof Product) {
+                    $store = $product->store;
+                    $isAuthourized = $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+                    if(!$isAuthourized) return ['deleted' => false, 'message' => 'You do not have permission to delete media file'];
+                }else if(($module = $mediable) instanceof Module) {
+                    $store = $module->store;
+                    $isAuthourized = $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+                    if(!$isAuthourized) return ['deleted' => false, 'message' => 'You do not have permission to delete media file'];
+                }
+
             }
 
             if(AWSService::exists($mediaFile->file_path)) {
@@ -206,13 +226,13 @@ class MediaFileRepository extends BaseRepository
             $deleted = $mediaFile->delete();
 
             if ($deleted) {
-                return ['delete' => true, 'message' => 'Media file deleted'];
+                return ['deleted' => true, 'message' => 'Media file deleted'];
             }else{
-                return ['delete' => false, 'message' => 'Media file delete unsuccessful'];
+                return ['deleted' => false, 'message' => 'Media file delete unsuccessful'];
             }
 
         }else{
-            return ['delete' => false, 'message' => 'This media file does not exist'];
+            return ['deleted' => false, 'message' => 'This media file does not exist'];
         }
     }
 
@@ -353,10 +373,13 @@ class MediaFileRepository extends BaseRepository
     {
         switch ($requestFileName) {
             case RequestFileName::STORE_LOGO:
-                return 'logos';
+                return 'store_logos';
+                break;
+            case RequestFileName::MODULE_FILE:
+                return 'module_files';
                 break;
             case RequestFileName::STORE_ADVERT:
-                return 'adverts';
+                return 'store_adverts';
                 break;
             case RequestFileName::PRODUCT_PHOTO:
                 return 'product_photos';
@@ -365,7 +388,13 @@ class MediaFileRepository extends BaseRepository
                 return 'profile_photos';
                 break;
             case RequestFileName::STORE_COVER_PHOTO:
-                return 'cover_photos';
+                return 'store_cover_photos';
+                break;
+            case RequestFileName::STORE_PAYMENT_METHOD_LOGO:
+                return 'store_payment_method_logos';
+                break;
+            case RequestFileName::STORE_PAYMENT_METHOD_PHOTO:
+                return 'store_payment_method_photos';
                 break;
         }
     }

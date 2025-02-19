@@ -10,8 +10,8 @@ Route::controller(MediaFileController::class)
         Route::post('/', 'createMediaFile')->name('create.media.file');
         Route::delete('/', 'deleteMediaFiles')->name('delete.media.files');
 
-        //  Payment Method
-        Route::prefix('{paymentMethodId}')->group(function () {
+        //  Media File
+        Route::prefix('{mediaFileId}')->group(function () {
             Route::get('/', 'showMediaFile')->name('show.media.file');
             Route::post('/', 'updateMediaFile')->name('update.media.file');
             Route::delete('/', 'deleteMediaFile')->name('delete.media.file');

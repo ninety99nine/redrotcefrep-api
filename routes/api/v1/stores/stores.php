@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\PageController;
 use App\Http\Controllers\StoreController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\CouponController;
@@ -46,6 +47,7 @@ Route::controller(StoreController::class)
         Route::put('/', 'updateStore')->name('update.store');
         Route::delete('/', 'deleteStore')->name('delete.store');
         Route::get('/logo', 'showStoreLogo')->name('show.store.logo');
+
         Route::post('/logo', 'uploadStoreLogo')->name('upload.store.logo');
         Route::get('/cover-photo', 'showStoreCoverPhoto')->name('show.store.cover.photo');
         Route::post('/cover-photo', 'uploadStoreCoverPhoto')->name('upload.store.cover.photo');
@@ -55,6 +57,8 @@ Route::controller(StoreController::class)
             Route::get('/', 'showStoreAdverts')->name('show.store.adverts');
             Route::post('/', 'uploadStoreAdvert')->name('upload.store.advert');
         });
+
+        Route::get('/qr-code-image-preview', 'showStoreQrCodeImagePreview')->withoutMiddleware('auth:sanctum')->name('show.store.qr.code.image.preview');
 
         //  Quick Start Guide
         Route::get('/quick-start-guide', 'showStoreQuickStartGuide')->name('show.store.quick.start.guide');
@@ -98,6 +102,11 @@ Route::controller(StoreController::class)
         //  Invitations To Join Team
         Route::post('/accept-invitation-to-join-store-team', 'acceptInvitationToJoinStoreTeam')->name('accept.invitation.to.join.store.team');
         Route::post('/decline-invitation-to-join-store-team', 'declineInvitationToJoinStoreTeam')->name('decline.invitation.to.join.store.team');
+
+        //  Pages
+        Route::controller(PageController::class)->prefix('pages')->group(function () {
+            Route::get('/', 'showPages')->name('show.store.pages');
+        });
 
         //  Orders
         Route::controller(OrderController::class)->prefix('orders')->group(function () {

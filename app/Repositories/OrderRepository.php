@@ -134,12 +134,7 @@ class OrderRepository extends BaseRepository
         $storeId = $data['store_id'];
         $store = Store::find($storeId);
 
-        if($store) {
-            $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
-            if(!$isAuthourized) return ['created' => false, 'message' => 'You do not have permission to create coupons'];
-        }else{
-            return ['created' => false, 'message' => 'This store does not exist'];
-        }
+        return $this->showCreatedResource(Order::first());
 
         $inspectedShoppingCart = $this->getShoppingCartService()->startInspection($store);
         if($inspectedShoppingCart->total_products == 0) return ['created' => false, 'message' => 'The shopping cart does not have products to place an order'];

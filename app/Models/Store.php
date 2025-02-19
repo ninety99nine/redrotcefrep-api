@@ -7,17 +7,19 @@ use App\Casts\Currency;
 use App\Enums\TaxMethod;
 use App\Casts\Percentage;
 use App\Traits\AuthTrait;
+use App\Enums\WeightUnit;
 use App\Traits\StoreTrait;
 use App\Casts\JsonToArray;
 use App\Enums\DistanceUnit;
-use App\Enums\CallToAction;
 use App\Enums\InsightPeriod;
 use App\Models\Base\BaseModel;
 use App\Enums\InsightCategory;
 use App\Enums\CheckoutFeeType;
+use App\Enums\RequestFileName;
 use App\Casts\E164PhoneNumberCast;
 use App\Casts\DeliveryDestinations;
 use App\Traits\UserStoreAssociationTrait;
+use App\Models\Pivots\StorePaymentMethod;
 use App\Models\Pivots\UserStoreAssociation;
 use Propaganistas\LaravelPhone\PhoneNumber;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -81,32 +83,32 @@ class Store extends BaseModel
 
     public static function CHECKOUT_FEE_TYPES(): array
     {
-        return array_map(fn($method) => $method->value, CheckoutFeeType::cases());
+        return array_map(fn($type) => $type->value, CheckoutFeeType::cases());
     }
 
     public static function INSIGHT_PERIODS(): array
     {
-        return array_map(fn($method) => $method->value, InsightPeriod::cases());
+        return array_map(fn($period) => $period->value, InsightPeriod::cases());
     }
 
     public static function INSIGHT_CATEGORIES(): array
     {
-        return array_map(fn($method) => $method->value, InsightCategory::cases());
+        return array_map(fn($category) => $category->value, InsightCategory::cases());
     }
 
     public static function TAX_METHOD_OPTIONS(): array
     {
-        return array_map(fn($method) => $method->value, TaxMethod::cases());
+        return array_map(fn($option) => $option->value, TaxMethod::cases());
     }
 
     public static function DISTANCE_UNIT_OPTIONS(): array
     {
-        return array_map(fn($method) => $method->value, DistanceUnit::cases());
+        return array_map(fn($option) => $option->value, DistanceUnit::cases());
     }
 
-    public static function CALL_TO_ACTION_OPTIONS(): array
+    public static function WEIGHT_UNIT_OPTIONS(): array
     {
-        return array_map(fn($method) => $method->value, CallToAction::cases());
+        return array_map(fn($option) => $option->value, WeightUnit::cases());
     }
 
     /**
@@ -129,6 +131,8 @@ class Store extends BaseModel
     const PICKUP_NOTE_MAX_CHARACTERS = 120;
     const DELIVERY_NOTE_MIN_CHARACTERS = 10;
     const DELIVERY_NOTE_MAX_CHARACTERS = 120;
+    const CALL_TO_ACTION_MIN_CHARACTERS = 3;
+    const CALL_TO_ACTION_MAX_CHARACTERS = 20;
     const SMS_SENDER_NAME_MIN_CHARACTERS = 3;
     const SMS_SENDER_NAME_MAX_CHARACTERS = 11;
     const OFFLINE_MESSAGE_MIN_CHARACTERS = 3;
@@ -154,6 +158,8 @@ class Store extends BaseModel
         'online' => 'boolean',
         'verified' => 'boolean',
         'allow_pickup' => 'boolean',
+        'tips' => JsonToArray::class,
+        'offer_rewards' => 'boolean',
         'allow_delivery' => 'boolean',
         'identified_orders' => 'boolean',
         'show_opening_hours' => 'boolean',
@@ -178,17 +184,19 @@ class Store extends BaseModel
     protected $tranformableCasts = [
         'rating' => 'decimal:1',            //  Eager loaded using the withAvg() method
         'currency' => Currency::class,
-        'tax_percentage_rate' => Percentage::class
+        'tax_percentage_rate' => Percentage::class,
+        'reward_percentage_rate' => Percentage::class
     ];
 
     protected $fillable = [
         'emoji', 'name', 'alias', 'email', 'ussd_mobile_number', 'contact_mobile_number', 'whatsapp_mobile_number', 'call_to_action',
-        'description', 'verified', 'online', 'offline_message', 'social_links', 'identified_orders', 'user_id', 'allow_delivery',
-        'allow_free_delivery', 'pickup_note', 'delivery_note', 'delivery_fee', 'delivery_flat_fee', 'delivery_destinations',
-        'allow_pickup', 'pickup_note', 'pickup_destinations', 'allow_deposit_payments', 'deposit_percentages',
-        'allow_installment_payments', 'installment_percentages', 'sms_sender_name', 'has_automated_payment_methods',
-        'country', 'language', 'currency', 'distance_unit', 'tax_percentage_rate', 'tax_method', 'tax_id',
-        'show_opening_hours', 'opening_hours', 'checkout_fees', 'allow_checkout_on_closed_hours'
+        'description', 'qr_code_file_path', 'verified', 'online', 'offline_message', 'social_links', 'identified_orders', 'user_id',
+        'allow_delivery', 'allow_free_delivery', 'pickup_note', 'delivery_note', 'delivery_fee', 'delivery_flat_fee',
+        'delivery_destinations', 'allow_pickup', 'pickup_note', 'pickup_destinations', 'allow_deposit_payments',
+        'deposit_percentages', 'allow_installment_payments', 'installment_percentages', 'sms_sender_name',
+        'has_automated_payment_methods', 'country', 'language', 'currency', 'distance_unit', 'weight_unit',
+        'tax_percentage_rate', 'tax_method', 'tax_id', 'show_opening_hours', 'opening_hours', 'checkout_fees',
+         'allow_checkout_on_closed_hours', 'tips', 'offer_rewards', 'reward_percentage_rate'
     ];
 
     /************
@@ -269,22 +277,32 @@ class Store extends BaseModel
 
     public function logo()
     {
-        return $this->morphOne(MediaFile::class, 'mediable')->where('type', 'logo');
+        return $this->morphOne(MediaFile::class, 'mediable')->where('type', RequestFileName::STORE_LOGO->value);
+    }
+
+    public function pages()
+    {
+        return $this->hasMany(Page::class);
     }
 
     public function adverts()
     {
-        return $this->morphMany(MediaFile::class, 'mediable')->where('type', 'advert');
+        return $this->morphMany(MediaFile::class, 'mediable')->where('type', RequestFileName::STORE_ADVERT->value);
     }
 
     public function coverPhoto()
     {
-        return $this->morphOne(MediaFile::class, 'mediable')->where('type', 'cover_photo');
+        return $this->morphOne(MediaFile::class, 'mediable')->where('type', RequestFileName::STORE_COVER_PHOTO->value);
     }
 
     public function address()
     {
         return $this->morphOne(Address::class, 'owner');
+    }
+
+    public function sections()
+    {
+        return $this->morphMany(Section::class, 'owner');
     }
 
     public function workflows()
@@ -299,7 +317,10 @@ class Store extends BaseModel
 
     public function paymentMethods()
     {
-        return $this->hasMany(PaymentMethod::class);
+        return $this->belongsToMany(PaymentMethod::class, 'store_payment_method', 'store_id', 'payment_method_id')
+                    ->withPivot(StorePaymentMethod::VISIBLE_COLUMNS)
+                    ->using(StorePaymentMethod::class)
+                    ->as('store_payment_method');
     }
 
     public function deliveryMethods()
@@ -480,13 +501,20 @@ class Store extends BaseModel
      ***************************/
 
     protected $appends = [
-        'name_with_emoji'
+        'name_with_emoji', 'web_link'
     ];
 
     public function nameWithEmoji(): Attribute
     {
         return new Attribute(
             get: fn() => empty($this->emoji) ? $this->name : $this->emoji.' '.$this->name
+        );
+    }
+
+    public function webLink(): Attribute
+    {
+        return new Attribute(
+            get: fn() => $this->alias ? config('app.FRONTEND_URI').'/'.$this->alias : null
         );
     }
 }

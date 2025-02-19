@@ -50,6 +50,30 @@ class HomeResource extends BaseResource
             new ResourceLink('update.product.visibility', route('update.product.visibility')),
             new ResourceLink('update.product.arrangement', route('update.product.arrangement')),
 
+            new ResourceLink('show.pages', route('show.pages')),
+            new ResourceLink('create.page', route('create.page')),
+            new ResourceLink('delete.pages', route('delete.pages')),
+            new ResourceLink('update.page.visibility', route('update.page.visibility')),
+            new ResourceLink('update.page.arrangement', route('update.page.arrangement')),
+
+            new ResourceLink('show.sections', route('show.sections')),
+            new ResourceLink('create.section', route('create.section')),
+            new ResourceLink('delete.sections', route('delete.sections')),
+            new ResourceLink('update.section.visibility', route('update.section.visibility')),
+            new ResourceLink('update.section.arrangement', route('update.section.arrangement')),
+
+            new ResourceLink('show.rows', route('show.rows')),
+            new ResourceLink('create.row', route('create.row')),
+            new ResourceLink('delete.rows', route('delete.rows')),
+            new ResourceLink('update.row.visibility', route('update.row.visibility')),
+            new ResourceLink('update.row.arrangement', route('update.row.arrangement')),
+
+            new ResourceLink('show.modules', route('show.modules')),
+            new ResourceLink('create.module', route('create.module')),
+            new ResourceLink('delete.modules', route('delete.modules')),
+            new ResourceLink('update.module.visibility', route('update.module.visibility')),
+            new ResourceLink('update.module.arrangement', route('update.module.arrangement')),
+
             new ResourceLink('show.coupons', route('show.coupons')),
             new ResourceLink('create.coupon', route('create.coupon')),
             new ResourceLink('delete.coupons', route('delete.coupons')),
@@ -91,6 +115,11 @@ class HomeResource extends BaseResource
             new ResourceLink('create.payment.method', route('create.payment.method')),
             new ResourceLink('delete.payment.methods', route('delete.payment.methods')),
             new ResourceLink('update.payment.method.arrangement', route('update.payment.method.arrangement')),
+
+            new ResourceLink('show.store.payment.methods', route('show.store.payment.methods')),
+            new ResourceLink('create.store.payment.method', route('create.store.payment.method')),
+            new ResourceLink('delete.store.payment.methods', route('delete.store.payment.methods')),
+            new ResourceLink('update.store.payment.method.arrangement', route('update.store.payment.method.arrangement')),
 
             new ResourceLink('show.delivery.methods', route('show.delivery.methods')),
             new ResourceLink('create.delivery.method', route('create.delivery.method')),

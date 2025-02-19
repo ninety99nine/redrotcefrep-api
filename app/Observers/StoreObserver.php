@@ -7,6 +7,7 @@ use App\Enums\CacheName;
 use App\Models\StoreQuota;
 use Illuminate\Support\Str;
 use App\Helpers\CacheManager;
+use App\Services\QrCode\QrCodeService;
 use App\Notifications\Stores\StoreDeleted;
 use Illuminate\Support\Facades\Notification;
 
@@ -22,9 +23,8 @@ class StoreObserver
 
     public function creating(Store $store)
     {
-        $store = $this->setStoreUssdMobileNumber($store);
-        $store = $this->setStoreContactMobileNumber($store);
-        $store = $this->setStoreWhatsappMobileNumber($store);
+        $idBasedWebLink = config('app.FRONTEND_URI').'/'.$store->id;
+        $store->qr_code_file_path = QrCodeService::generate($idBasedWebLink);
     }
 
     public function updating(Store $store)
@@ -132,42 +132,6 @@ class StoreObserver
             $store->social_links = collect($store->social_links)->filter(fn($socialLink) => !empty($socialLink['name']) && !empty($socialLink['link']))->toArray();
         }
 
-        return $store;
-    }
-
-    /**
-     * Set store USSD mobile number.
-     *
-     * @param Store $store
-     * @return Store
-     */
-    private function setStoreUssdMobileNumber(Store $store): Store
-    {
-        if(is_null($store->ussd_mobile_number)) $store->ussd_mobile_number = request()->current_user->mobile_number->formatE164();
-        return $store;
-    }
-
-    /**
-     * Set store contact mobile number.
-     *
-     * @param Store $store
-     * @return Store
-     */
-    private function setStoreContactMobileNumber(Store $store): Store
-    {
-        if(is_null($store->contact_mobile_number)) $store->contact_mobile_number = request()->current_user->mobile_number->formatE164();
-        return $store;
-    }
-
-    /**
-     * Set store whatsapp mobile number.
-     *
-     * @param Store $store
-     * @return Store
-     */
-    private function setStoreWhatsappMobileNumber(Store $store): Store
-    {
-        if(is_null($store->whatsapp_mobile_number)) $store->whatsapp_mobile_number = request()->current_user->mobile_number->formatE164();
         return $store;
     }
 

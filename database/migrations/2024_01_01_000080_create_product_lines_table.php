@@ -36,6 +36,9 @@ class CreateProductLinesTable extends Migration
             $table->string('sku', 100)->nullable();
             $table->string('barcode', 100)->nullable();
 
+            /*  Weight Information  */
+            $table->decimal('unit_weight', 10, 2)->default(0);
+
             /*  Pricing Information  */
             $table->boolean('is_free')->default(false);
             $table->char('currency', 3)->default(config('app.DEFAULT_CURRENCY'));

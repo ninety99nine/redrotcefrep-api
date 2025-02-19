@@ -10,6 +10,7 @@ use App\Http\Requests\Models\Product\ShowProductsRequest;
 use App\Http\Requests\Models\Product\CreateProductRequest;
 use App\Http\Requests\Models\Product\UpdateProductRequest;
 use App\Http\Requests\Models\Product\DeleteProductsRequest;
+use App\Http\Requests\Models\Product\CreateProductPhotoRequest;
 use App\Http\Requests\Models\Product\CreateProductVariationsRequest;
 use App\Http\Requests\Models\Product\UpdateProductVisibilityRequest;
 use App\Http\Requests\Models\Product\UpdateProductArrangementRequest;
@@ -141,12 +142,13 @@ class ProductController extends BaseController
     }
 
     /**
-     * Create product photo(s).
+     * Create product photo.
      *
+     * @param CreateProductPhotoRequest $request
      * @param string $productId
      * @return JsonResponse
      */
-    public function createProductPhoto(string $productId): JsonResponse
+    public function createProductPhoto(CreateProductPhotoRequest $request, string $productId): JsonResponse
     {
         return $this->prepareOutput($this->repository->createProductPhoto($productId));
     }

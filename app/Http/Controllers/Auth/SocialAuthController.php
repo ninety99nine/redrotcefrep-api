@@ -38,7 +38,7 @@ class SocialAuthController extends BaseController
             ]);
 
             return redirect()->away(
-                config('app.SOCIAL_AUTH_REDIRECT_URI') . '?' . http_build_query($params)
+                config('app.FRONTEND_SOCIAL_AUTH_REDIRECT_URI') . '?' . http_build_query($params)
             );
 
         }
@@ -76,7 +76,7 @@ class SocialAuthController extends BaseController
             ]);
 
             return redirect()->away(
-                config('app.SOCIAL_AUTH_REDIRECT_URI') . '?' . http_build_query($params)
+                config('app.FRONTEND_SOCIAL_AUTH_REDIRECT_URI') . '?' . http_build_query($params)
             );
 
         } catch (\GuzzleHttp\Exception\ClientException $e) {
@@ -90,7 +90,7 @@ class SocialAuthController extends BaseController
             ]);
 
             return redirect()->away(
-                config('app.SOCIAL_AUTH_REDIRECT_URI') . '?' . http_build_query($params)
+                config('app.FRONTEND_SOCIAL_AUTH_REDIRECT_URI') . '?' . http_build_query($params)
             );
 
         } catch (\Exception $e) {
@@ -102,7 +102,7 @@ class SocialAuthController extends BaseController
             ]);
 
             return redirect()->away(
-                config('app.SOCIAL_AUTH_REDIRECT_URI') . '?' . http_build_query($params)
+                config('app.FRONTEND_SOCIAL_AUTH_REDIRECT_URI') . '?' . http_build_query($params)
             );
 
         }
@@ -139,7 +139,7 @@ class SocialAuthController extends BaseController
             ]);
 
             return redirect()->away(
-                config('app.SOCIAL_AUTH_REDIRECT_URI') . '?' . http_build_query($params)
+                config('app.FRONTEND_SOCIAL_AUTH_REDIRECT_URI') . '?' . http_build_query($params)
             );
 
         }
@@ -180,7 +180,7 @@ class SocialAuthController extends BaseController
             ]);
 
             return redirect()->away(
-                config('app.SOCIAL_AUTH_REDIRECT_URI') . '?' . http_build_query($params)
+                config('app.FRONTEND_SOCIAL_AUTH_REDIRECT_URI') . '?' . http_build_query($params)
             );
 
         } catch (\GuzzleHttp\Exception\ClientException $e) {
@@ -194,7 +194,7 @@ class SocialAuthController extends BaseController
             ]);
 
             return redirect()->away(
-                config('app.SOCIAL_AUTH_REDIRECT_URI') . '?' . http_build_query($params)
+                config('app.FRONTEND_SOCIAL_AUTH_REDIRECT_URI') . '?' . http_build_query($params)
             );
 
         } catch (\Exception $e) {
@@ -206,7 +206,7 @@ class SocialAuthController extends BaseController
             ]);
 
             return redirect()->away(
-                config('app.SOCIAL_AUTH_REDIRECT_URI') . '?' . http_build_query($params)
+                config('app.FRONTEND_SOCIAL_AUTH_REDIRECT_URI') . '?' . http_build_query($params)
             );
 
         }
@@ -242,7 +242,7 @@ class SocialAuthController extends BaseController
             ]);
 
             return redirect()->away(
-                config('app.SOCIAL_AUTH_REDIRECT_URI') . '?' . http_build_query($params)
+                config('app.FRONTEND_SOCIAL_AUTH_REDIRECT_URI') . '?' . http_build_query($params)
             );
 
         }
@@ -280,7 +280,7 @@ class SocialAuthController extends BaseController
             ]);
 
             return redirect()->away(
-                config('app.SOCIAL_AUTH_REDIRECT_URI') . '?' . http_build_query($params)
+                config('app.FRONTEND_SOCIAL_AUTH_REDIRECT_URI') . '?' . http_build_query($params)
             );
 
         } catch (\GuzzleHttp\Exception\ClientException $e) {
@@ -294,7 +294,7 @@ class SocialAuthController extends BaseController
             ]);
 
             return redirect()->away(
-                config('app.SOCIAL_AUTH_REDIRECT_URI') . '?' . http_build_query($params)
+                config('app.FRONTEND_SOCIAL_AUTH_REDIRECT_URI') . '?' . http_build_query($params)
             );
 
         } catch (\Exception $e) {
@@ -306,7 +306,7 @@ class SocialAuthController extends BaseController
             ]);
 
             return redirect()->away(
-                config('app.SOCIAL_AUTH_REDIRECT_URI') . '?' . http_build_query($params)
+                config('app.FRONTEND_SOCIAL_AUTH_REDIRECT_URI') . '?' . http_build_query($params)
             );
 
         }

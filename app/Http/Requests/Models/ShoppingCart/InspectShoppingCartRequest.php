@@ -62,8 +62,8 @@ class InspectShoppingCartRequest extends FormRequest
             'cart_products.*.id' => ['required', 'uuid'],
             'cart_products.*.quantity' => ['required', 'numeric', 'min:1'],
             'cart_coupon_code' => ['bail', 'nullable', 'string'],
-            'tip_flat_rate' => ['bail', 'nullable', 'min:1', 'numeric', 'regex:/^\d+(\.\d{1,2})?$/'],
-            'tip_percentage_rate' => ['bail', 'nullable', 'min:1', 'max:100', 'numeric'],
+            'tip_flat_rate' => ['bail', 'nullable', 'min:0', 'numeric', 'regex:/^\d+(\.\d{1,2})?$/'],
+            'tip_percentage_rate' => ['bail', 'nullable', 'min:0', 'max:100', 'numeric'],
             'delivery_method_id' => ['uuid', Rule::exists('delivery_methods', 'id')->where(function (Builder $query) {
                 $query->where('store_id', request()->input('store_id'))->where('active', 1);
             })]

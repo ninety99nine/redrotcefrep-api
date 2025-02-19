@@ -24,6 +24,7 @@ class ProductLine extends BaseModel
         'is_cancelled' => 'boolean',
         'subtotal' => Money::class,
         'unit_loss' => Money::class,
+        'unit_weight' => 'decimal:2',
         'unit_price' => Money::class,
         'grand_total' => Money::class,
         'unit_profit' => Money::class,
@@ -57,6 +58,9 @@ class ProductLine extends BaseModel
 
         /*  Tracking Information  */
         'sku', 'barcode',
+
+        /*  Weight Information  */
+        'unit_weight',
 
         /*  Pricing Information  */
         'is_free', 'currency', 'unit_regular_price', 'unit_sale_price', 'unit_cost_price',

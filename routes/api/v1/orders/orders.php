@@ -8,7 +8,7 @@ Route::controller(OrderController::class)
     ->prefix('orders')
     ->group(function () {
         Route::get('/', 'showOrders')->name('show.orders');
-        Route::post('/', 'createOrder')->name('create.order');
+        Route::post('/', 'createOrder')->name('create.order')->withoutMiddleware('auth:sanctum');
         Route::delete('/', 'deleteOrders')->name('delete.orders');
         Route::get('/status/counts', 'showOrderStatusCounts')->name('show.order.status.counts');
 

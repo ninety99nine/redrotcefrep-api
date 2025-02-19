@@ -9,6 +9,7 @@ use Illuminate\Support\Str;
 use App\Traits\Base\BaseTrait;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use App\Services\ShoppingCart\ShoppingCartService;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Resources\Json\ResourceCollection;
@@ -305,7 +306,7 @@ abstract class BaseRepository
             if($operator == 'in') {
                 $options = explode(',', $input1);
                 $query = $this->getQuery()->whereIn($column, $options);
-            }if($operator == 'not_in') {
+            }else if($operator == 'not_in') {
                 $options = explode(',', $input1);
                 $query = $this->getQuery()->whereNotIn($column, $options);
             }else if($operator == 'like') {
@@ -616,27 +617,6 @@ abstract class BaseRepository
     }
 
     /**
-     * Show resource existence.
-     *
-     * @param Model|null $model
-     * @return Model|array|null
-     */
-    protected function showResourceExistence(Model|null $model): Model|array|null
-    {
-        if($this->returnType == ReturnType::MODEL) {
-            return $model;
-        }else if($this->returnType == ReturnType::ARRAY) {
-            $resourceClassName = $this->getResourceClassName();
-            $resourceKeyName = Str::snake($this->getResourceName());
-
-            return [
-                'exists' => !is_null($model),
-                $resourceKeyName => $model ? new $resourceClassName($model) : null
-            ];
-        }
-    }
-
-    /**
      * Show created resource.
      *
      * @param Model|null $model
@@ -698,14 +678,37 @@ abstract class BaseRepository
     }
 
     /**
+     * Show resource existence.
+     *
+     * @param Model|null $model
+     * @return Model|array|null
+     */
+    protected function showResourceExistence(Model|null $model): Model|array|null
+    {
+        if($this->returnType == ReturnType::MODEL) return $model;
+
+        if($this->returnType == ReturnType::ARRAY) {
+            $resourceClassName = $this->getResourceClassName();
+            $resourceKeyName = Str::snake($this->getResourceName());
+
+            return [
+                'exists' => !is_null($model),
+                $resourceKeyName => $model ? new $resourceClassName($model) : null
+            ];
+        }
+    }
+
+    /**
      * Show bulk created resources.
      *
      * @param array $models
      * @param string $status
      * @return array
      */
-    protected function showBulkCreatedResources(array $models, string $status = 'created'): array
+    protected function showBulkCreatedResources(array $models, string $status = 'created'): Collection|array
     {
+        if($this->returnType == ReturnType::MODEL) return $models;
+
         $totalModels = count($models);
         $resourseName = $this->getResourceName();
         $resourseNameInPlural = Str::plural($resourseName);

@@ -39,34 +39,4 @@ trait PaymentMethodTrait
     {
         return $this->getRawOriginal('type') === PaymentMethodType::ORANGE_AIRTIME->value;
     }
-
-    /**
-     *  Check if manual
-     *
-     *  @return bool
-     */
-    public function isManual()
-    {
-        return $this->getRawOriginal('category') === PaymentMethodCategory::MANUAL->value;
-    }
-
-    /**
-     *  Check if local
-     *
-     *  @return bool
-     */
-    public function isLocal()
-    {
-        return $this->getRawOriginal('category') === PaymentMethodCategory::LOCAL->value;
-    }
-
-    /**
-     *  Check if automated
-     *
-     *  @return bool
-     */
-    public function isAutomated()
-    {
-        return $this->getRawOriginal('category') === PaymentMethodCategory::AUTOMATED->value;
-    }
 }

@@ -247,9 +247,9 @@ class UserRepository extends BaseRepository
         if(!$isAuthourized) return ['uploaded' => false, 'message' => 'You do not have permission to update user profile photo'];
 
         if($user->profilePhoto) {
-            $result = $this->getMediaFileRepository()->updateMediaFile($user->profilePhoto);
+            $result = $this->getMediaFileRepository()->authourize()->updateMediaFile($user->profilePhoto);
         }else{
-            $result = $this->getMediaFileRepository()->createMediaFile(RequestFileName::PROFILE_PHOTO, $user);
+            $result = $this->getMediaFileRepository()->authourize()->createMediaFile(RequestFileName::PROFILE_PHOTO, $user);
         }
 
         $uploaded = (isset($result['created']) && $result['created'] == true) || (isset($result['updated']) && $result['updated'] == true);

@@ -7,6 +7,7 @@ use App\Casts\Money;
 use App\Casts\Currency;
 use App\Casts\Percentage;
 use App\Models\Base\BaseModel;
+use App\Enums\RequestFileName;
 use App\Traits\TransactionTrait;
 use App\Enums\TransactionFailureType;
 use App\Enums\TransactionPaymentStatus;
@@ -152,7 +153,7 @@ class Transaction extends BaseModel
 
     public function proofOfPayment()
     {
-        return $this->morphOne(MediaFile::class, 'mediable');
+        return $this->morphOne(MediaFile::class, 'mediable')->where('type', RequestFileName::TRANSACTION_PROOF_OF_PAYMENT_PHOTO->value);
     }
 
     public function requestedByUser()

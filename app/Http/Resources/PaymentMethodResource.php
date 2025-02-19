@@ -16,10 +16,12 @@ class PaymentMethodResource extends BaseResource
     {
         $paymentMethod = $this->resource;
 
-        $this->resourceLinks = [
-            new ResourceLink('show.payment.method', route('show.payment.method', ['paymentMethodId' => $paymentMethod->id])),
-            new ResourceLink('update.payment.method', route('update.payment.method', ['paymentMethodId' => $paymentMethod->id])),
-            new ResourceLink('delete.payment.method', route('delete.payment.method', ['paymentMethodId' => $paymentMethod->id])),
-        ];
+        if($paymentMethod->id) {
+            $this->resourceLinks = [
+                new ResourceLink('show.payment.method', route('show.payment.method', ['paymentMethodId' => $paymentMethod->id])),
+                new ResourceLink('update.payment.method', route('update.payment.method', ['paymentMethodId' => $paymentMethod->id])),
+                new ResourceLink('delete.payment.method', route('delete.payment.method', ['paymentMethodId' => $paymentMethod->id])),
+            ];
+        }
     }
 }

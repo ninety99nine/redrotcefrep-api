@@ -29,4 +29,22 @@ class QrCodeService
         //  Return the QR Code PNG Image url
         return $url;
     }
+
+    /**
+     *  Regenerate the QR Code PNG Image
+     *
+     *  Reference: https://www.simplesoftware.io/#/docs/simple-qrcode
+     *
+     *  @param $url The url to the existing qr code that must be replaced
+     *  @param $information The information to save on the QR Code PNG Image
+     *  @return string
+     */
+    public static function generateAndReplace($url, $information)
+    {
+        if(AWSService::exists($url)) {
+            AWSService::delete($url);
+        }
+
+        return self::generate($information);
+    }
 }

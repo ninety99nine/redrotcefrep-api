@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Store;
 use App\Enums\CacheName;
 use App\Models\MediaFile;
+use Illuminate\View\View;
 use App\Traits\AuthTrait;
 use App\Enums\Association;
 use Illuminate\Support\Str;
@@ -97,8 +98,8 @@ class StoreRepository extends BaseRepository
     {
         $store = Store::create($data);
         $this->addStoreCreator($store, request()->current_user);
-        $this->getMediaFileRepository()->createMediaFile(RequestFileName::STORE_LOGO, $store);
-        $this->getMediaFileRepository()->createMediaFile(RequestFileName::STORE_COVER_PHOTO, $store);
+        $this->getMediaFileRepository()->authourize()->createMediaFile(RequestFileName::STORE_LOGO, $store);
+        $this->getMediaFileRepository()->authourize()->createMediaFile(RequestFileName::STORE_COVER_PHOTO, $store);
         Notification::send(request()->current_user, new StoreCreated($store, request()->current_user));
         return $this->showCreatedResource($store);
     }
@@ -492,20 +493,25 @@ class StoreRepository extends BaseRepository
             if($isAuthourized) {
 
                 if($store->logo) {
-                    $result = $this->getMediaFileRepository()->updateMediaFile($store->logo);
-                }else{
-                    $result = $this->getMediaFileRepository()->createMediaFile(RequestFileName::STORE_LOGO, $store);
-                }
 
-                $uploaded = (isset($result['created']) && $result['created'] == true) || (isset($result['updated']) && $result['updated'] == true);
+                    $mediaFile = $this->getMediaFileRepository()->authourize()->shouldReturnModel()->updateMediaFile($store->logo);
 
-                if($uploaded) {
-
-                    $mediaFile = isset($result['media_file']) ? $result['media_file'] : $result['media_files'][0];
-                    return $this->showSavedResource($mediaFile, 'uploaded', 'Store logo uploaded');
+                    if($mediaFile instanceof MediaFile) {
+                        return $this->getMediaFileRepository()->showSavedResource($mediaFile, 'uploaded', 'Store logo uploaded');
+                    }else{
+                        return ['uploaded' => false, 'message' => 'Store logo upload failed'];
+                    }
 
                 }else{
-                    return ['uploaded' => false, 'message' => $result['message']];
+
+                    $mediaFiles = $this->getMediaFileRepository()->authourize()->shouldReturnModel()->createMediaFile(RequestFileName::STORE_LOGO, $store);
+
+                    if(is_array($mediaFiles) && !empty($mediaFiles)) {
+                        return $this->getMediaFileRepository()->showSavedResource($mediaFiles[0], 'uploaded', 'Store logo uploaded');
+                    }else{
+                        return ['uploaded' => false, 'message' => 'Store logo upload failed'];
+                    }
+
                 }
 
             }else{
@@ -551,20 +557,25 @@ class StoreRepository extends BaseRepository
             if($isAuthourized) {
 
                 if($store->coverPhoto) {
-                    $result = $this->getMediaFileRepository()->updateMediaFile($store->coverPhoto);
-                }else{
-                    $result = $this->getMediaFileRepository()->createMediaFile(RequestFileName::STORE_COVER_PHOTO, $store);
-                }
 
-                $uploaded = (isset($result['created']) && $result['created'] == true) || (isset($result['updated']) && $result['updated'] == true);
+                    $mediaFile = $this->getMediaFileRepository()->authourize()->shouldReturnModel()->updateMediaFile($store->coverPhoto);
 
-                if($uploaded) {
-
-                    $mediaFile = isset($result['media_file']) ? $result['media_file'] : $result['media_files'][0];
-                    return $this->showSavedResource($mediaFile, 'uploaded', 'Store cover photo uploaded');
+                    if($mediaFile instanceof MediaFile) {
+                        return $this->getMediaFileRepository()->showSavedResource($mediaFile, 'uploaded', 'Store cover photo uploaded');
+                    }else{
+                        return ['uploaded' => false, 'message' => 'Store cover photo upload failed'];
+                    }
 
                 }else{
-                    return ['uploaded' => false, 'message' => $result['message']];
+
+                    $mediaFiles = $this->getMediaFileRepository()->authourize()->shouldReturnModel()->createMediaFile(RequestFileName::STORE_COVER_PHOTO, $store);
+
+                    if(is_array($mediaFiles) && !empty($mediaFiles)) {
+                        return $this->getMediaFileRepository()->showSavedResource($mediaFiles[0], 'uploaded', 'Store cover photo uploaded');
+                    }else{
+                        return ['uploaded' => false, 'message' => 'Store cover photo upload failed'];
+                    }
+
                 }
 
             }else{
@@ -608,7 +619,7 @@ class StoreRepository extends BaseRepository
             $isAuthourized = $this->isAuthourized() || $this->checkIfAssociatedAsStoreCreatorOrAdmin($store);
 
             if($isAuthourized) {
-                return $this->getMediaFileRepository()->createMediaFile(RequestFileName::STORE_ADVERT, $store);
+                return $this->getMediaFileRepository()->authourize()->createMediaFile(RequestFileName::STORE_ADVERT, $store);
             }else{
                 return ['created' => false, 'message' => 'You do not have permission to upload store advert'];
             }
@@ -616,6 +627,18 @@ class StoreRepository extends BaseRepository
         }else{
             return ['created' => false, 'message' => 'This store does not exist'];
         }
+    }
+
+    /**
+     * Show store qr code image preview.
+     *
+     * @param string $storeId
+     * @return View
+     */
+    public function showStoreQrCodeImagePreview(string $storeId): View
+    {
+        $store = Store::find($storeId);
+        return view('qr-code-image-previews.store-qr-code-image-preview', ['store' => $store]);
     }
 
     /**

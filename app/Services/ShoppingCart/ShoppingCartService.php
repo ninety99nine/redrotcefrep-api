@@ -5,6 +5,7 @@ namespace App\Services\ShoppingCart;
 use Carbon\Carbon;
 use App\Models\Store;
 use App\Models\Product;
+use App\Models\Address;
 use App\Enums\CacheName;
 use App\Enums\TaxMethod;
 use App\Models\CouponLine;
@@ -15,8 +16,10 @@ use App\Enums\CheckoutFeeType;
 use App\Traits\Base\BaseTrait;
 use App\Enums\StockQuantityType;
 use App\Enums\DeliveryMethodFeeType;
+use Illuminate\Support\Facades\Http;
 use App\Enums\AllowedQuantityPerOrder;
 use App\Enums\DeliveryMethodScheduleType;
+use App\Enums\DistanceUnit;
 
 class ShoppingCartService
 {
@@ -26,6 +29,7 @@ class ShoppingCartService
     public $vat = null;
     public $subtotal = 0;
     public $feeTotal = 0;
+    public $address = null;
     public $vatRate = null;
     public $discounts = [];
     public $grandTotal = 0;
@@ -39,11 +43,20 @@ class ShoppingCartService
     public $existingCart = null;
     public $relatedProducts = [];
     public $deliveryMethod = null;
-    public $cartCouponCode = null;
+    public $promotionCode = null;
+    public $promotionName = null;
+    public $deliveryWeight = null;
+    public $deliveryDistance = null;
+    public $deliveryDuration = null;
+    public $promotionMessage = null;
     public $deliveryTimeslot = null;
+    public $pinLocationOnMap = null;
     public $deliveryMethodTips = [];
     public $existingCouponLines = [];
+    public $promotionApplied = false;
     public $tipPercentageRate = null;
+    public $addressIsRequired = null;
+    public $addressIsComplete = false;
     public $scheduleIsRequired = null;
     public $scheduleIsComplete = null;
     public $isExistingCustomer = null;
@@ -51,6 +64,7 @@ class ShoppingCartService
     public $existingProductLines = [];
     public $specifiedCouponLines = [];
     public $specifiedProductLines = [];
+    public $canApplyPromotionCode = false;
     public $scheduleIncompleteReasons = [];
     public $detectedCouponLineChanges = [];
     public $deliveryMethodAvailable = null;
@@ -67,8 +81,9 @@ class ShoppingCartService
         $this->setStoreCurrency();
 
         $this->setCartProducts();
-        $this->setCartCouponCode();
+        $this->setPromotionCode();
         $this->setCartTipRate();
+        $this->setAddress();
 
         $this->setExistingCustomerStatus();
         $this->setExistingShoppingCartFromCache();
@@ -93,6 +108,8 @@ class ShoppingCartService
         $this->setDeliveryTimeslot();
         $this->handleDeliveryMethod();
 
+        $this->setCanApplyPromotionCode();
+        $this->setCouponDiscountAppliedByCode();
         $this->applyCouponLineDiscounts();
         $this->calculateTaxTotals();
         $this->calculateCustomFeeTotals();
@@ -138,6 +155,13 @@ class ShoppingCartService
                     'total_uncancelled' => $totalSpecifiedUnCancelledCouponLines,
                 ],
             ],
+            'can_apply_promotion_code' => $this->canApplyPromotionCode,
+            'promotion_code' => [
+                'code' => $this->promotionCode,
+                'name' => $this->promotionName,
+                'applied' => $this->promotionApplied,
+                'message' => $this->promotionMessage,
+            ],
             'delivery' => [
                 'method' => $this->deliveryMethod ? [
                     'name' => $this->deliveryMethod->name,
@@ -145,6 +169,9 @@ class ShoppingCartService
                     'unavailability_reasons' => $this->deliveryMethodUnavailabilityReasons,
                     'tips' => $this->deliveryMethodTips,
                 ] : null,
+                'weight' => $this->deliveryWeight,
+                'distance' => $this->deliveryDistance,
+                'duration' => $this->deliveryDuration
             ],
             'schedule' => [
                 'is_required' => $this->scheduleIsRequired,
@@ -152,8 +179,10 @@ class ShoppingCartService
                 'incomplete_reasons' => $this->scheduleIncompleteReasons
             ],
             'address' => [
-                'is_required' => $this->scheduleIsComplete,
-                'incomplete_reasons' => $this->scheduleIncompleteReasons
+                'is_required' => $this->addressIsRequired,
+                'is_complete' => $this->addressIsComplete,
+                'pin_location_on_map' => $this->pinLocationOnMap,
+                'incomplete_reasons' => $this->scheduleIncompleteReasons,
             ],
             'changes' => [
                 'detected_product_line_changes' => $this->detectedProductLineChanges,
@@ -211,13 +240,13 @@ class ShoppingCartService
     }
 
     /**
-     *  Set cart coupon code.
+     *  Set promotion code.
      *
      *  @return void
      */
-    public function setCartCouponCode(): void
+    public function setPromotionCode(): void
     {
-        $this->cartCouponCode = request()->has('cart_coupon_code') ? request()->input('cart_coupon_code') : null;
+        $this->promotionCode = request()->has('promotion_code') ? request()->input('promotion_code') : null;
     }
 
     /**
@@ -231,6 +260,26 @@ class ShoppingCartService
             $this->tipFlatRate = request()->input('tip_flat_rate');
         }else if(request()->has('tip_percentage_rate')) {
             $this->tipPercentageRate = request()->input('tip_percentage_rate');
+        }
+    }
+
+    /**
+     *  Set address.
+     *
+     *  @return void
+     */
+    public function setAddress(): void
+    {
+        if(request()->has('address')) {
+
+            $attributes = request()->input('address');
+
+            $address = new Address();
+            $address->fill($attributes);
+
+            $this->address = $address;
+            $this->addressIsComplete = true;
+
         }
     }
 
@@ -1082,7 +1131,7 @@ class ShoppingCartService
             $invalidate('Deactivated by store');
         }
 
-        if($storeCoupon->activate_using_code && $this->cartCouponCode != $storeCoupon->code){
+        if($storeCoupon->activate_using_code && $this->promotionCode != $storeCoupon->code){
             $invalidate('Required a code for activation but the code provided was invalid');
         }
 
@@ -1150,6 +1199,77 @@ class ShoppingCartService
     }
 
     /**
+     * Check if a promotion code can be applied.
+     *
+     * @param object $storeCoupon
+     * @return bool
+     */
+    private function checkIfCanApplyPromotionCode($storeCoupon): bool
+    {
+        if(!$storeCoupon->active) {
+            return false;
+        }
+
+        if(!$storeCoupon->activate_using_code) {
+            return false;
+        }
+
+        if($storeCoupon->activate_using_minimum_grand_total && $this->subtotalAfterDiscount < $storeCoupon->minimum_grand_total->amount) {
+            return false;
+        }
+
+        if($storeCoupon->activate_using_minimum_total_products && $this->totalSpecifiedUnCancelledProductLines < $storeCoupon->minimum_total_products) {
+            return false;
+        }
+
+        if($storeCoupon->activate_using_minimum_total_product_quantities && $this->totalSpecifiedUncancelledProductLineQuantities < $storeCoupon->minimum_total_product_quantities) {
+            return false;
+        }
+
+        if($storeCoupon->activate_using_start_datetime && Carbon::parse($storeCoupon->start_datetime)->isFuture()) {
+            return false;
+        }
+
+        if($storeCoupon->activate_using_end_datetime && Carbon::parse($storeCoupon->end_datetime)->isPast()) {
+            return false;
+        }
+
+        if($storeCoupon->activate_using_hours_of_day && !in_array(Carbon::now()->format('H:00'), $storeCoupon->hours_of_day)) {
+            return false;
+        }
+
+        if($storeCoupon->activate_using_days_of_the_week && !in_array(Carbon::now()->format('l'), $storeCoupon->days_of_the_week)) {
+            return false;
+        }
+
+        if($storeCoupon->activate_using_days_of_the_month && !in_array(Carbon::now()->format('d'), $storeCoupon->days_of_the_month)) {
+            return false;
+        }
+
+        if($storeCoupon->activate_using_months_of_the_year && !in_array(Carbon::now()->format('F'), $storeCoupon->months_of_the_year)) {
+            return false;
+        }
+
+        if($storeCoupon->activate_for_new_customer) {
+            if($this->isExistingCustomer === true || $this->isExistingCustomer === null) {
+                return false;
+            }
+        }
+
+        if($storeCoupon->activate_for_existing_customer) {
+            if($this->isExistingCustomer === false || $this->isExistingCustomer === null) {
+                return false;
+            }
+        }
+
+        if($storeCoupon->activate_using_usage_limit && $storeCoupon->remaining_quantity == 0) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
      * Prepare coupon line.
      *
      * @param object $storeCoupon
@@ -1184,6 +1304,67 @@ class ShoppingCartService
         }
 
         return $couponLine;
+    }
+
+    /**
+     * Set can apply promotion code.
+     *
+     * @return void
+     */
+    public function setCanApplyPromotionCode(): void
+    {
+        $this->canApplyPromotionCode = collect($this->storeCoupons)->contains(function ($storeCoupon) {
+            return $this->checkIfCanApplyPromotionCode($storeCoupon);
+        });
+    }
+
+    /**
+     * Set coupon discount applied by code.
+     *
+     * @return void
+     */
+    public function setCouponDiscountAppliedByCode(): void
+    {
+        if($this->canApplyPromotionCode) {
+
+            $discountingCouponLine = collect($this->getSpecifiedUnCancelledCouponLines())->first(function ($couponLine) {
+                $coupon = collect($this->storeCoupons)->firstWhere('id', $couponLine->coupon_id);
+                return $coupon->offer_discount && $coupon->activate_using_code && $coupon->code == $this->promotionCode;
+            });
+
+            if($discountingCouponLine) {
+                $this->promotionApplied = true;
+                $this->promotionName = $discountingCouponLine->name;
+
+                if($discountingCouponLine->discount_type == DiscountType::FIXED->value) {
+                    $totalDiscount = $this->convertToMoneyFormat($discountingCouponLine->discount_fixed_rate->amount, $this->currency);
+                    $this->promotionMessage = 'A discount of'.$totalDiscount->amountWithCurrency.' has been applied';
+                }else if($discountingCouponLine->discount_type == DiscountType::PERCENTAGE->value) {
+                    $totalDiscount = $this->convertToMoneyFormat($this->subtotalAfterDiscount * ($discountingCouponLine->discount_percentage_rate / 100), $this->currency);
+                    $this->promotionMessage = 'A 10% discount ('.$totalDiscount->amountWithCurrency.') has been applied';
+                }
+
+                $otherTotalDiscount = collect($this->getSpecifiedUnCancelledCouponLines())->filter(function ($couponLine) {
+                    $coupon = collect($this->storeCoupons)->firstWhere('id', $couponLine->coupon_id);
+                    return $coupon->offer_discount && !$coupon->activate_using_code;
+                })->sum(function ($couponLine) {
+                    if($couponLine->discount_type == DiscountType::FIXED->value) {
+                        $totalDiscount = $couponLine->discount_fixed_rate->amount;
+                    }else if($couponLine->discount_type == DiscountType::PERCENTAGE->value) {
+                        $totalDiscount = $this->subtotalAfterDiscount * ($couponLine->discount_percentage_rate / 100);
+
+                    }
+                    return $totalDiscount;
+                });
+
+                if($otherTotalDiscount > 0) {
+                    $otherTotalDiscount = $this->convertToMoneyFormat($otherTotalDiscount, $this->currency);
+                    $this->promotionMessage .= ', along with additional discounts of '.$otherTotalDiscount->amountWithCurrency.' from other offers.';
+                }
+
+            }
+
+        }
     }
 
     public function getSpecifiedCancelledProductLines()
@@ -1255,6 +1436,8 @@ class ShoppingCartService
     {
         if(!$this->deliveryMethod) return;
         $this->validateDeliveryMethod();
+        $this->setIfDeliveryMethodAddressIsRequired();
+        $this->setIfDeliveryMethodScheduleIsRequired();
         $this->validateDeliveryMethodSchedule();
         $this->setDeliveryMethodTips();
     }
@@ -1279,14 +1462,36 @@ class ShoppingCartService
     }
 
     /**
+     * Set if delivery method address is required.
+     *
+     * @return void
+     */
+    private function setIfDeliveryMethodAddressIsRequired(): void
+    {
+        $this->pinLocationOnMap =
+            $this->deliveryMethod->pin_location_on_map ||
+            ($this->deliveryMethod->charge_fee && in_array($this->deliveryMethod->fee_type, [DeliveryMethodFeeType::FEE_BY_DISTANCE->value, DeliveryMethodFeeType::FEE_BY_POSTAL_CODE->value]));
+
+        $this->addressIsRequired = $this->deliveryMethod->ask_for_an_address || $this->pinLocationOnMap;
+    }
+
+    /**
+     * Set if delivery method schedule is required.
+     *
+     * @return void
+     */
+    private function setIfDeliveryMethodScheduleIsRequired(): void
+    {
+        $this->scheduleIsRequired = $this->deliveryMethod->set_schedule;
+    }
+
+    /**
      * Validate delivery method schedule.
      *
      * @return void
      */
     private function validateDeliveryMethodSchedule(): void
     {
-        $this->scheduleIsRequired = $this->deliveryMethod->set_schedule;
-
         if($this->scheduleIsRequired) {
 
             $this->scheduleIsComplete = true;
@@ -1346,7 +1551,9 @@ class ShoppingCartService
      */
     private function applyCouponLineDiscounts(): void
     {
-        collect($this->getSpecifiedUnCancelledCouponLines())->each(function($couponLine){
+        $discounts = [];
+
+        collect($this->getSpecifiedUnCancelledCouponLines())->each(function($couponLine) use (&$discounts) {
             if(!$couponLine->offer_discount) return;
 
             if($couponLine->discount_type == DiscountType::FIXED->value) {
@@ -1355,7 +1562,14 @@ class ShoppingCartService
                 $totalDiscount = $this->subtotalAfterDiscount * ($couponLine->discount_percentage_rate / 100);
             }
 
-            $this->addDiscount('coupon discount', $totalDiscount);
+            $discounts[] = [
+                'name' => $couponLine->name,
+                'total' => $totalDiscount
+            ];
+        });
+
+        collect($discounts)->each(function($discount) {
+            $this->addDiscount($discount['name'], $discount['total']);
         });
     }
 
@@ -1382,10 +1596,10 @@ class ShoppingCartService
      *
      * @return void
      */
-    private function addFee($name, $amount): void
+    private function addFee($name, $amount, $keyName = null): void
     {
         // Update or add the fee
-        $this->additionalFees[$name] = [
+        $this->additionalFees[$keyName ?? $name] = [
             'name' => ucfirst($name),
             'amount' => $this->convertToMoneyFormat(($this->additionalFees[$name]['amount']->amount ?? 0) + $amount, $this->currency)
         ];
@@ -1470,7 +1684,10 @@ class ShoppingCartService
         if(!$this->deliveryMethod->charge_fee) return;
 
         $this->handleDeliveryFlatFee();
+        $this->handleDeliveryFeeByWeight();
         $this->handleDeliveryPercentageFee();
+        $this->handleDeliveryFeeByDistance();
+        $this->handleDeliveryFeeByPostalCode();
     }
 
     /**
@@ -1494,6 +1711,315 @@ class ShoppingCartService
         if($this->deliveryMethod->fee_type != DeliveryMethodFeeType::PERCENTAGE_FEE->value) return;
         $this->addFee('Delivery fee', $this->subtotalAfterDiscount * ($this->deliveryMethod->percentage_fee_rate / 100));
     }
+
+    /**
+     * Handle delivery fee by distance.
+     *
+     * @return void
+     */
+    private function handleDeliveryFeeByDistance(): void
+    {
+        if($this->deliveryMethod->fee_type !== DeliveryMethodFeeType::FEE_BY_DISTANCE->value) return;
+
+        $storeLocation = $this->deliveryMethod->address;
+        $customerLocation = $this->address;
+
+        if(!$storeLocation || ($storeLocation && (empty($storeLocation->latitude) || empty($storeLocation->longitude)))) {
+            return;
+        }
+
+        if(!$customerLocation || ($customerLocation && (empty($customerLocation->latitude) || empty($customerLocation->longitude)))) {
+            return;
+        }
+
+        $origin = "{$storeLocation['latitude']},{$storeLocation['longitude']}";
+        $destination = "{$customerLocation['latitude']},{$customerLocation['longitude']}";
+
+        [$this->deliveryDistance, $this->deliveryDuration] = $this->getDistanceFromGoogleMaps($origin, $destination);
+
+        if($this->deliveryDistance) {
+
+            foreach ($this->deliveryMethod->distance_zones as $zone) {
+
+                if($this->deliveryDistance['value'] <= $zone['distance']) {
+                    $this->addFee('Delivery fee ('.$this->deliveryDistance['text'].')', $zone['fee'], 'Delivery fee');
+                    return;
+                }
+
+            }
+
+        }
+
+        // If no zone matches, apply fallback fee
+        $this->addFallbackFee($this->deliveryDistance['text'] ?? null);
+    }
+
+    /**
+     * Handle delivery fee by postal code.
+     *
+     * @return void
+     */
+    private function handleDeliveryFeeByPostalCode(): void
+    {
+        if($this->deliveryMethod->fee_type !== DeliveryMethodFeeType::FEE_BY_POSTAL_CODE->value) return;
+
+        // Retrieve the customer's postal code or attempt to fetch it using coordinates
+        $customerPostalCode = $this->address->postal_code ?? null;
+
+        if(!$customerPostalCode && $this->address->latitude && $this->address->longitude) {
+            $customerPostalCode = $this->getPostalCodeFromCoordinates(
+                $this->address->latitude,
+                $this->address->longitude
+            );
+        }
+
+        if($customerPostalCode) {
+            foreach ($this->deliveryMethod->postal_code_zones as $zone) {
+                foreach ($zone['postal_codes'] as $postalCode) {
+                    if($this->isPostalCodeMatch($customerPostalCode, $postalCode)) {
+                        $this->addFee('Delivery fee (Zone ' . $postalCode . ')', $zone['fee'], 'Delivery fee');
+                        return;
+                    }
+                }
+            }
+        }
+
+        // If no zone matches, apply fallback fee
+        $this->addFallbackFee($customerPostalCode ? 'Zone ' . $customerPostalCode . ')' : null);
+    }
+
+    /**
+     * Handle delivery fee by weight.
+     *
+     * @return void
+     */
+    private function handleDeliveryFeeByWeight(): void
+    {
+        if($this->deliveryMethod->fee_type !== DeliveryMethodFeeType::FEE_BY_WEIGHT->value) return;
+
+        $totalWeight = $this->calculateTotalWeight();
+        $weightUnit = $this->store->weight_unit;
+
+        $this->deliveryWeight = [
+            'unit' => $weightUnit,
+            'value' => $totalWeight,
+            'text' => $totalWeight . $weightUnit
+        ];
+
+        foreach ($this->deliveryMethod->weight_categories as $category) {
+            foreach ($category['weights'] as $weight) {
+                if($this->isWeightMatch($totalWeight, $weight)) {
+                    $this->addFee('Delivery fee ('.$weight . $weightUnit.')', $category['fee'], 'Delivery fee');
+                    return;
+                }
+            }
+        }
+
+        // If no category matches, apply fallback fee
+        $this->addFallbackFee($this->deliveryWeight['text']);
+    }
+
+    /**
+     * Check if a postal code matches a specific postal code or range.
+     *
+     * @param string $customerPostalCode
+     * @param string $postalCode
+     * @return bool
+     */
+    private function isPostalCodeMatch(string $customerPostalCode, string $postalCode): bool
+    {
+        // Check if the postal code is a range (e.g., "2000-2020")
+        if(str_contains($postalCode, '-')) {
+            [$start, $end] = explode('-', $this->sanitizePostalCode($postalCode));
+
+            // Ensure both start and end are valid numbers
+            if(is_numeric($start) && is_numeric($end)) {
+                return $customerPostalCode >= $start && $customerPostalCode <= $end;
+            }
+        }
+
+        // Otherwise, check for an exact match or prefix match
+        return str_starts_with($customerPostalCode, $postalCode);
+    }
+
+    /**
+     * Sanitize a postal code by trimming spaces and normalizing format.
+     *
+     * @param string $postalCode
+     * @return string
+     */
+    private function sanitizePostalCode(string $postalCode): string
+    {
+        // Trim spaces and normalize the range format (e.g., "2000 - 2020" to "2000-2020")
+        return preg_replace('/\s+/', '', $postalCode);
+    }
+
+    /**
+     * Check if a total weight matches a specific weight or range.
+     *
+     * @return float
+     */
+    private function calculateTotalWeight(): float
+    {
+        return collect($this->getSpecifiedUnCancelledProductLines())->map(function($productLine) {
+            return $productLine->quantity * ($productLine->unit_weight ?? 0);
+        })->sum();
+    }
+
+    /**
+     * Check if a total weight matches a specific weight or range.
+     *
+     * @param float $totalWeight
+     * @param string $weight
+     * @return bool
+     */
+    private function isWeightMatch(float $totalWeight, string $weight): bool
+    {
+        // Check if the weight is a range (e.g., "0-5")
+        if(str_contains($weight, '-')) {
+            [$start, $end] = explode('-', $weight);
+
+            // Ensure both start and end are valid numbers
+            if(is_numeric($start) && is_numeric($end)) {
+                return $totalWeight >= (float)$start && $totalWeight <= (float)$end;
+            }
+        }
+
+        // Otherwise, check for an exact match
+        return (float)$totalWeight === (float)$weight;
+    }
+
+    /**
+     * Get distance and duration information from Google Maps.
+     *
+     * @param string $origin
+     * @param string $destination
+     * @return array
+     */
+    private function getDistanceFromGoogleMaps(string $origin, string $destination): array
+    {
+        $apiKey = config('services.google_maps.key');
+        $url = "https://maps.googleapis.com/maps/api/distancematrix/json?origins=$origin&destinations=$destination&key=$apiKey";
+
+        $response = Http::get($url);
+
+        if($response->successful()) {
+            $data = $response->json();
+
+            if(!empty($data['rows'][0]['elements'][0]['distance']['value']) &&
+                !empty($data['rows'][0]['elements'][0]['duration']['value'])) {
+
+                $distanceInMeters = $data['rows'][0]['elements'][0]['distance']['value'];
+                $durationInSeconds = $data['rows'][0]['elements'][0]['duration']['value'];
+
+                // Convert distance to the preferred unit
+                $distanceUnit = $this->store->distance_unit ?? DistanceUnit::KM->value;
+                $distance = $this->convertDistance($distanceInMeters, $distanceUnit);
+
+                return [
+                    [
+                        'value' => $distance,
+                        'unit' => $distanceUnit,
+                        'text' => $this->formatDistance($distance, $distanceUnit),
+                    ],
+                    [
+                        'value' => $durationInSeconds,
+                        'text' => $data['rows'][0]['elements'][0]['duration']['text'],
+                    ],
+                ];
+            }
+        }
+
+        return [null, null];
+    }
+
+    /**
+     * Get postal code from Google Maps based on latitude and longitude.
+     *
+     * @param float $latitude
+     * @param float $longitude
+     * @return string|null
+     */
+    private function getPostalCodeFromCoordinates(float $latitude, float $longitude): ?string
+    {
+        $apiKey = config('services.google_maps.key');
+        $url = "https://maps.googleapis.com/maps/api/geocode/json?latlng=$latitude,$longitude&key=$apiKey";
+
+        $response = Http::get($url);
+
+        if($response->successful()) {
+            $data = $response->json();
+
+            if(!empty($data['results'])) {
+                foreach ($data['results'] as $result) {
+                    foreach ($result['address_components'] as $component) {
+                        if(in_array('postal_code', $component['types'])) {
+                            return $component['long_name']; // Return the postal code
+                        }
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+
+    /**
+     * Convert distance from meters to the desired unit.
+     *
+     * @param float $meters
+     * @param string $unit
+     * @return float
+     */
+    private function convertDistance(float $meters, string $unit): float
+    {
+        if($unit === DistanceUnit::MILE->value) {
+            return round($meters * 0.000621371, 2); // Convert meters to miles
+        }
+
+        // Default is kilometers
+        return $meters / 1000;
+    }
+
+    /**
+     * Format distance with unit.
+     *
+     * @param float $distance
+     * @param string $unit
+     * @return string
+     */
+    private function formatDistance(float $distance, string $unit): string
+    {
+        return sprintf('%.2f %s', $distance, $unit === DistanceUnit::MILE->value ? 'miles' : 'km');
+    }
+
+    /**
+     * Add a fallback fee when other calculations fail.
+     *
+     * @param string|null $unit
+     * @return void
+     */
+    private function addFallbackFee(string|null $info = null): void
+    {
+        $name = 'Delivery fee';
+        if($info) $name .= ' ('.$info.')';
+        $fallbackFeeType = $this->deliveryMethod->fallback_fee_type;
+
+        switch ($fallbackFeeType) {
+            case DeliveryMethodFeeType::FLAT_FEE->value:
+                $fallbackFee = $this->deliveryMethod->fallback_flat_fee_rate->amount;
+                $this->addFee($name, $fallbackFee, 'Delivery fee');
+                break;
+
+            case DeliveryMethodFeeType::PERCENTAGE_FEE->value:
+                $fallbackFee = $this->subtotalAfterDiscount * ($this->deliveryMethod->fallback_percentage_fee_rate / 100);
+                $this->addFee($name, $fallbackFee, 'Delivery fee');
+                break;
+        }
+    }
+
+
 
     /**
      * Calculate tip fee totals.

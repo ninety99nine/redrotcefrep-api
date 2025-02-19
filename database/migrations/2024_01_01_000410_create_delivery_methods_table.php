@@ -34,8 +34,8 @@ class CreateDeliveryMethodsTable extends Migration
 
             $table->boolean('offer_free_delivery_on_minimum_grand_total')->default(false);
             $table->decimal('free_delivery_minimum_grand_total', 10, 2)->default(0);
-
-            $table->boolean('require_location_on_map')->default(false);
+            $table->boolean('ask_for_an_address')->default(false);
+            $table->boolean('pin_location_on_map')->default(false);
             $table->boolean('show_distance_on_invoice')->default(false);
 
             $table->boolean('charge_fee')->default(false);
@@ -43,6 +43,7 @@ class CreateDeliveryMethodsTable extends Migration
             $table->decimal('percentage_fee_rate', 5, 2)->default(0);
             $table->decimal('flat_fee_rate', 10, 2)->default(0);
 
+            $table->json('weight_categories')->nullable();
             $table->json('distance_zones')->nullable();
             $table->json('postal_code_zones')->nullable();
 

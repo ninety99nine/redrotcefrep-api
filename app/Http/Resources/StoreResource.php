@@ -27,6 +27,7 @@ class StoreResource extends BaseResource
             new ResourceLink('show.store.adverts', route('show.store.adverts', ['storeId' => $store->id])),
             new ResourceLink('upload.store.advert', route('upload.store.advert', ['storeId' => $store->id])),
             new ResourceLink('show.store.quick.start.guide', route('show.store.quick.start.guide', ['storeId' => $store->id])),
+            new ResourceLink('show.store.qr.code.image.preview', route('show.store.qr.code.image.preview', ['storeId' => $store->id])),
             new ResourceLink('show.store.insights', route('show.store.insights', ['storeId' => $store->id])),
 
             new ResourceLink('show.store.followers', route('show.store.followers', ['storeId' => $store->id])),
@@ -56,6 +57,8 @@ class StoreResource extends BaseResource
             new ResourceLink('show.store.payment.methods', route('show.store.payment.methods', ['storeId' => $store->id])),
             new ResourceLink('show.store.delivery.methods', route('show.store.delivery.methods', ['storeId' => $store->id])),
             new ResourceLink('show.store.shopping.delivery.methods', route('show.store.shopping.delivery.methods', ['storeId' => $store->id])),
+
+            new ResourceLink('show.store.pages', route('show.store.pages', ['storeId' => $store->id])),
         ];
     }
 }

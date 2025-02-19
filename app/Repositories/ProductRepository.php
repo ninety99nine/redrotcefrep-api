@@ -93,7 +93,7 @@ class ProductRepository extends BaseRepository
         ]);
 
         $product = Product::create($data);
-        $this->getMediaFileRepository()->createMediaFile(RequestFileName::PRODUCT_PHOTO, $product);
+        $this->getMediaFileRepository()->authourize()->createMediaFile(RequestFileName::PRODUCT_PHOTO, $product);
         return $this->showCreatedResource($product);
     }
 
@@ -455,7 +455,7 @@ class ProductRepository extends BaseRepository
             }else{
                 return ['created' => false, 'message' => 'This store does not exist'];
             }
-            return $this->getMediaFileRepository()->createMediaFile(RequestFileName::PRODUCT_PHOTO, $product);
+            return $this->getMediaFileRepository()->authourize()->createMediaFile(RequestFileName::PRODUCT_PHOTO, $product);
         }else{
             return ['created' => false, 'message' => 'This product does not exist'];
         }
@@ -505,7 +505,7 @@ class ProductRepository extends BaseRepository
             }else{
                 return ['message' => 'This store does not exist'];
             }
-            return $this->getMediaFileRepository()->setQuery($product->photos())->updateMediaFile($photoId);
+            return $this->getMediaFileRepository()->authourize()->setQuery($product->photos())->updateMediaFile($photoId);
         }else{
             return ['message' => 'This product does not exist'];
         }

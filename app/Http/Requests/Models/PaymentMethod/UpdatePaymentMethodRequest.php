@@ -5,7 +5,6 @@ namespace App\Http\Requests\Models\PaymentMethod;
 use App\Models\PaymentMethod;
 use App\Traits\Base\BaseTrait;
 use Illuminate\Validation\Rule;
-use App\Services\Country\CountryService;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdatePaymentMethodRequest extends FormRequest
@@ -41,7 +40,6 @@ class UpdatePaymentMethodRequest extends FormRequest
                     : Rule::unique('payment_methods')->ignore(request()->paymentMethodId)
             ],
             'type' => ['exclude'],
-            'instruction' => ['bail', 'sometimes', 'nullable', 'string', 'min:'.PaymentMethod::INSTRUCTION_MIN_CHARACTERS, 'max:'.PaymentMethod::INSTRUCTION_MAX_CHARACTERS],
             'category' => ['exclude'],
             'countries' => ['exclude'],
             'metadata' => ['sometimes', 'nullable', 'array'],

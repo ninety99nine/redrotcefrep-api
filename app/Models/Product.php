@@ -10,7 +10,9 @@ use App\Casts\Percentage;
 use App\Casts\JsonToArray;
 use App\Casts\StockQuantity;
 use App\Traits\ProductTrait;
+use App\Enums\SortProductBy;
 use App\Models\Base\BaseModel;
+use App\Enums\RequestFileName;
 use App\Casts\StockQuantityType;
 use App\Casts\AllowedQuantityPerOrder;
 use Illuminate\Database\Eloquent\Model;
@@ -19,7 +21,6 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Enums\StockQuantityType as _StockQuantityType;
 use App\Enums\AllowedQuantityPerOrder as _AllowedQuantityPerOrder;
-use App\Enums\SortProductBy;
 
 class Product extends BaseModel
 {
@@ -75,6 +76,7 @@ class Product extends BaseModel
         'has_price' => 'boolean',
         'has_stock' => 'boolean',
         'unit_loss' => Money::class,
+        'unit_weight' => 'decimal:2',
         'unit_price' => Money::class,
         'unit_profit' => Money::class,
         'allow_variations' => 'boolean',
@@ -115,6 +117,9 @@ class Product extends BaseModel
 
         /*  Variation Information  */
         'allow_variations', 'variant_attributes', 'total_variations', 'total_visible_variations',
+
+        /*  Weight Information  */
+        'unit_weight',
 
         /*  Pricing Information  */
         'is_free', 'currency', 'unit_regular_price', 'unit_sale_price', 'unit_cost_price',
@@ -229,7 +234,7 @@ class Product extends BaseModel
 
     public function photos()
     {
-        return $this->morphMany(MediaFile::class, 'mediable')->where('type', 'product_photo');
+        return $this->morphMany(MediaFile::class, 'mediable')->where('type', RequestFileName::PRODUCT_PHOTO->value);
     }
 
     public function variations()

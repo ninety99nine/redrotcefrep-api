@@ -25,33 +25,6 @@ class CreateStoreRequest extends FormRequest
     }
 
     /**
-     *  We want to modify the request input before validating
-     *
-     *  Reference: https://laracasts.com/discuss/channels/requests/modify-request-input-value-before-validation
-     */
-    public function getValidatorInstance()
-    {
-        try {
-
-            /**
-             *  Convert the "call_to_action" to the correct format if it has been set on the request inputs
-             *
-             *  Example: convert "buy" or "buyNow" into "buy now"
-             */
-            if($this->has('call_to_action')) {
-                $this->merge([
-                    'call_to_action' => $this->separateWordsThenLowercase($this->get('call_to_action'))
-                ]);
-            }
-
-        } catch (\Throwable $th) {
-
-        }
-
-        return parent::getValidatorInstance();
-    }
-
-    /**
      * Get the validation rules that apply to the request.
      *
      * @return array
@@ -67,7 +40,7 @@ class CreateStoreRequest extends FormRequest
                 'bail', 'sometimes', 'string', 'min:'.Store::ALIAS_MIN_CHARACTERS, 'max:'.Store::ALIAS_MAX_CHARACTERS,
                 Rule::unique('stores')
             ],
-            'call_to_action' => ['bail', 'sometimes', Rule::in(Store::CALL_TO_ACTION_OPTIONS())],
+            'call_to_action' => ['bail', 'sometimes', 'nullable', 'min:'.Store::CALL_TO_ACTION_MIN_CHARACTERS, 'max:'.Store::CALL_TO_ACTION_MAX_CHARACTERS],
             'description' => ['bail', 'sometimes', 'nullable', 'min:'.Store::DESCRIPTION_MIN_CHARACTERS, 'max:'.Store::DESCRIPTION_MAX_CHARACTERS],
             'sms_sender_name' => [
                 'bail', 'sometimes', 'nullable', 'min:'.Store::SMS_SENDER_NAME_MIN_CHARACTERS, 'max:'.Store::SMS_SENDER_NAME_MAX_CHARACTERS,
@@ -80,6 +53,9 @@ class CreateStoreRequest extends FormRequest
             'online' => ['bail', 'sometimes', 'boolean'],
             'offline_message' => ['bail', 'sometimes', 'string', 'min:'.Store::OFFLINE_MESSAGE_MIN_CHARACTERS, 'max:'.Store::OFFLINE_MESSAGE_MAX_CHARACTERS],
             'identified_orders' => ['bail', 'sometimes', 'boolean'],
+
+            'offer_rewards' => ['bail', 'sometimes', 'boolean'],
+            'reward_percentage_rate' => ['bail', 'sometimes', 'min:0', 'max:100', 'numeric'],
 
             'social_links' => ['bail', 'sometimes', 'array'],
             'social_links.*.name' => ['bail', 'nullable', 'string', 'min:'.Store::SOCIAL_LINK_NAME_MIN_CHARACTERS, 'max:'.Store::SOCIAL_LINK_NAME_MAX_CHARACTERS],
@@ -94,10 +70,10 @@ class CreateStoreRequest extends FormRequest
             'opening_hours.*.hours.*.*' => ['bail', 'string', 'regex:/^(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9])$/'],
 
             'checkout_fees' => ['bail', 'sometimes', 'array', 'max:5'],
-            'checkout_fees.name' => ['bail', 'required', 'string', 'min:'.Store::CHECKOUT_FEE_NAME_MIN_CHARACTERS, 'max:'.Store::CHECKOUT_FEE_NAME_MAX_CHARACTERS],
-            'checkout_fees.type' => ['bail', 'required', Rule::in(Store::CHECKOUT_FEE_TYPES())],
-            'checkout_fees.flat_rate' => ['bail', 'required_without:checkout_fees.percentage_rate', 'min:0', 'numeric', 'regex:/^\d+(\.\d{1,2})?$/'],
-            'checkout_fees.percentage_rate' => ['bail', 'required_without:checkout_fees.flat_rate', 'min:0', 'max:100', 'numeric'],
+            'checkout_fees.*.name' => ['bail', 'required', 'string', 'min:'.Store::CHECKOUT_FEE_NAME_MIN_CHARACTERS, 'max:'.Store::CHECKOUT_FEE_NAME_MAX_CHARACTERS],
+            'checkout_fees.*.type' => ['bail', 'required', Rule::in(Store::CHECKOUT_FEE_TYPES())],
+            'checkout_fees.*.flat_rate' => ['bail', 'required_without:checkout_fees.percentage_rate', 'min:0', 'numeric', 'regex:/^\d+(\.\d{1,2})?$/'],
+            'checkout_fees.*.percentage_rate' => ['bail', 'required_without:checkout_fees.flat_rate', 'min:0', 'max:100', 'numeric'],
 
             'email' => ['bail', 'nullable', 'sometimes', 'email'],
             'ussd_mobile_number' => ['bail', 'nullable', 'sometimes', 'string', 'phone'],
@@ -108,6 +84,7 @@ class CreateStoreRequest extends FormRequest
             'currency' => ['bail', 'sometimes', Rule::in(collect((new CurrencyService)->getCurrencies())->map(fn($currency) => $currency['code'])->toArray())],
             'language' => ['bail', 'sometimes', Rule::in(collect((new LanguageService)->getLanguages())->map(fn($language) => $language['code'])->toArray())],
             'distance_unit' => ['bail', 'sometimes', Rule::in(Store::DISTANCE_UNIT_OPTIONS())],
+            'weight_unit' => ['bail', 'sometimes', Rule::in(Store::WEIGHT_UNIT_OPTIONS())],
             'tax_method' => ['bail', 'sometimes', Rule::in(Store::TAX_METHOD_OPTIONS())],
             'tax_id' => ['bail', 'sometimes', 'nullable', 'string', 'min:'.Store::TAX_ID_MIN_CHARACTERS, 'max:'.Store::TAX_ID_MAX_CHARACTERS],
             'tax_percentage_rate' => ['bail', 'sometimes', 'min:0', 'max:100', 'numeric'],
@@ -152,7 +129,6 @@ class CreateStoreRequest extends FormRequest
     public function messages()
     {
         return [
-            'call_to_action.in' => 'Answer "'.collect(Store::CALL_TO_ACTION_OPTIONS())->join('", "', '" or "').' to indicate the call to action',
             'logo.max' => 'The :attribute must not be greater than 4 megabytes',
             'cover_photo.max' => 'The :attribute must not be greater than 4 megabytes',
         ];
@@ -171,6 +147,7 @@ class CreateStoreRequest extends FormRequest
             'opening_hours.*.available' => 'availability status',
             'opening_hours.*.hours' => 'open hours',
             'opening_hours.*.hours.*.*' => 'time',
+            'alias' => 'store link'
         ];
     }
 }

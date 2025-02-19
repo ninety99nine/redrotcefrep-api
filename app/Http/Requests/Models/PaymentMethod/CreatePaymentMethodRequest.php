@@ -45,7 +45,6 @@ class CreatePaymentMethodRequest extends FormRequest
                     ? Rule::unique('payment_methods')->where('store_id', request()->input('store_id'))
                     : Rule::unique('payment_methods')
             ],
-            'instruction' => ['bail', 'nullable', 'string', 'min:'.PaymentMethod::INSTRUCTION_MIN_CHARACTERS, 'max:'.PaymentMethod::INSTRUCTION_MAX_CHARACTERS],
             'category' => ['bail', 'required', Rule::in(PaymentMethod::PAYMENT_METHOD_CATEGORIES())],
             'countries' => ['sometimes', 'nullable', 'array', 'required'],
             'countries.*' => ['string', Rule::in(collect((new CountryService)->getCountries())->map(fn($country) => $country->iso)->toArray())],

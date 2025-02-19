@@ -2,53 +2,130 @@
 
 namespace App\Services\AWS;
 
+use Exception;
+use Illuminate\Http\File;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Spatie\ImageOptimizer\OptimizerChainFactory;
 
 class AWSService
 {
     /**
-     *  Store the specified file in Amazon S3
+     * Store a file in Amazon S3
      *
      * @param string $folderName
-     * @param \Illuminate\Http\File|\Illuminate\Http\UploadedFile $file
+     * @param File|UploadedFile $file
      * @return string
+     * @throws Exception
      */
     public static function store($folderName, $file)
     {
-        /**
-         *  Check if this file was UploadedFile on the request.
-         *  Note that the getClientOriginalExtension() method only works for an UploadedFile
-         */
-        if ($file instanceof \Illuminate\Http\UploadedFile) {
+        if ($file instanceof UploadedFile) {
+            $filePath = self::createTempFile($file);
 
-            $fileName = Str::random(40).'.'.$file->getClientOriginalExtension();
-            $path = $folderName.'/'.$fileName;
+            self::optimizeImage($filePath);
 
-            Storage::disk('s3')->put($path, file_get_contents($file));
+            $fileName = Str::random(40) . '.' . $file->getClientOriginalExtension();
+            $s3Path = $folderName . '/' . $fileName;
 
-        //  Check if this file is an HtmlString e.g a generated QR Code
-        } elseif ($file instanceof \Illuminate\Support\HtmlString) {
+            Storage::disk('s3')->put($s3Path, file_get_contents($filePath));
 
-            // Assuming $file is an HtmlString representing the QR Code image
-            $fileName = Str::random(30).time().'.png';  // Set the desired extension
-            $path = $folderName.'/'.$fileName;
+            unlink($filePath);
 
-            // Convert the HtmlString to string and save it as a file
-            $qrCodeContent = (string) $file;
-            Storage::disk('s3')->put($path, $qrCodeContent);
-
-        } else {
-
-            // Handle the case when $file is neither an UploadedFile nor an HtmlString
-            throw new \InvalidArgumentException('Invalid file type');
-
+            return self::pathToUrl($s3Path);
         }
 
-        $awsUrl = AWSService::pathToUrl($path);
+        if ($file instanceof \Illuminate\Support\HtmlString) {
+            return self::storeHtmlString($folderName, $file);
+        }
 
-        return $awsUrl;
+        throw new \InvalidArgumentException('Invalid file type');
+    }
+
+    /**
+     * Create a temporary file for processing
+     *
+     * @param UploadedFile $file
+     * @return string
+     * @throws Exception
+     */
+    private static function createTempFile(UploadedFile $file)
+    {
+        $tempDir = storage_path('app/temp/');
+        if (!file_exists($tempDir)) {
+            mkdir($tempDir, 0777, true);
+        }
+
+        $fileName = Str::random(40) . '.' . $file->getClientOriginalExtension();
+        $filePath = $tempDir . $fileName;
+
+        copy($file->getRealPath(), $filePath);
+
+        if (!file_exists($filePath) || !is_readable($filePath)) {
+            throw new Exception("File could not be found or is not readable: $filePath");
+        }
+
+        return $filePath;
+    }
+
+    /**
+     * Optimize an image file before uploading to S3
+     *
+     * @param string $filePath
+     * @throws Exception
+     */
+    private static function optimizeImage($filePath)
+    {
+        $mimeType = mime_content_type($filePath);
+        $originalSize = filesize($filePath);
+
+        $commands = [
+            'jpeg' => "jpegoptim --strip-all --all-progressive --max=80 " . escapeshellarg($filePath),
+            'png'  => "pngquant --force --quality=60-80 --output " . escapeshellarg($filePath) . " " . escapeshellarg($filePath),
+            'gif'  => "gifsicle --optimize=3 --colors=128 -o " . escapeshellarg($filePath) . " " . escapeshellarg($filePath),
+        ];
+
+        foreach ($commands as $key => $command) {
+
+            if (str_contains($mimeType, $key)) {
+
+                exec("$command 2>&1", $output, $returnVar);
+
+                if ($returnVar !== 0) {
+                    throw new Exception("Image optimization failed: " . implode("\n", $output));
+                }
+
+                clearstatcache();
+
+                if (filesize($filePath) >= $originalSize) {
+                    //  throw new Exception("Optimization had no effect, file size unchanged.");
+                }
+
+                return;
+
+            }
+        }
+
+        //  throw new Exception("Unsupported image format: $mimeType");
+    }
+
+    /**
+     * Store an HTML string as an image in S3
+     *
+     * @param string $folderName
+     * @param \Illuminate\Support\HtmlString $file
+     * @return string
+     */
+    private static function storeHtmlString($folderName, $file)
+    {
+        $fileName = Str::uuid() . '.png';
+        $s3Path = $folderName . '/' . $fileName;
+
+        Storage::disk('s3')->put($s3Path, (string) $file);
+
+        return self::pathToUrl($s3Path);
     }
 
     /**
@@ -92,17 +169,17 @@ class AWSService
         if( empty(config('app.AWS_DEFAULT_REGION')) ) {
 
             //  Throw an exception
-            throw new \Exception('The AWS default region must be provided');
+            throw new Exception('The AWS default region must be provided');
 
         }else if ( empty(config('app.AWS_BUCKET')) ) {
 
             //  Throw an exception
-            throw new \Exception('The AWS bucket must be provided');
+            throw new Exception('The AWS bucket must be provided');
 
         }else if ( empty($path) ) {
 
             //  Throw an exception
-            throw new \Exception('The file path must be provided');
+            throw new Exception('The file path must be provided');
 
         }else{
 
@@ -131,12 +208,12 @@ class AWSService
         if ( empty(config('app.AWS_BUCKET')) ) {
 
             //  Throw an exception
-            throw new \Exception('The AWS bucket must be provided');
+            throw new Exception('The AWS bucket must be provided');
 
         }else if ( empty($url) ) {
 
             //  Throw an exception
-            throw new \Exception('The url must be provided');
+            throw new Exception('The url must be provided');
 
         }else{
 

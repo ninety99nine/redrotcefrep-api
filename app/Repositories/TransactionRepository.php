@@ -85,7 +85,7 @@ class TransactionRepository extends BaseRepository
         if(!$this->isAuthourized()) return ['created' => false, 'message' => 'You do not have permission to create transactions'];
 
         $transaction = Transaction::create($data);
-        $this->getMediaFileRepository()->createMediaFile(RequestFileName::TRANSACTION_PROOF_OF_PAYMENT_PHOTO, $transaction);
+        $this->getMediaFileRepository()->authourize()->createMediaFile(RequestFileName::TRANSACTION_PROOF_OF_PAYMENT_PHOTO, $transaction);
         return $this->showCreatedResource($transaction);
     }
 
@@ -287,9 +287,9 @@ class TransactionRepository extends BaseRepository
             if($isAuthourized) {
 
                 if($transaction->proofOfPayment) {
-                    $result = $this->getMediaFileRepository()->updateMediaFile($transaction->proofOfPayment);
+                    $result = $this->getMediaFileRepository()->authourize()->updateMediaFile($transaction->proofOfPayment);
                 }else{
-                    $result = $this->getMediaFileRepository()->createMediaFile(RequestFileName::TRANSACTION_PROOF_OF_PAYMENT_PHOTO, $transaction);
+                    $result = $this->getMediaFileRepository()->authourize()->createMediaFile(RequestFileName::TRANSACTION_PROOF_OF_PAYMENT_PHOTO, $transaction);
                 }
 
                 $uploaded = (isset($result['created']) && $result['created'] == true) || (isset($result['updated']) && $result['updated'] == true);

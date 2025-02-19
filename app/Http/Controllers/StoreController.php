@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\View\View;
 use Illuminate\Http\JsonResponse;
 use App\Repositories\StoreRepository;
 use App\Http\Controllers\Base\BaseController;
@@ -267,6 +268,17 @@ class StoreController extends BaseController
     public function uploadStoreAdvert(string $storeId): JsonResponse
     {
         return $this->prepareOutput($this->repository->uploadStoreAdvert($storeId));
+    }
+
+    /**
+     * Show store qr code image preview.
+     *
+     * @param string $storeId
+     * @return View
+     */
+    public function showStoreQrCodeImagePreview(string $storeId): View
+    {
+        return $this->prepareOutput($this->repository->showStoreQrCodeImagePreview($storeId));
     }
 
     /**

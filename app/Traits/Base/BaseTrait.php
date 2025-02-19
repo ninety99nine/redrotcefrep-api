@@ -15,9 +15,9 @@ trait BaseTrait
     /**
      *  Complete address.
      *
-     *  @return bool
+     *  @return string
      */
-    public function completeAddress($addressLine, $addressLine2 = null, $city = null, $state = null, $postalCode = null, $country = null)
+    public function completeAddress($addressLine, $addressLine2 = null, $city = null, $state = null, $postalCode = null, $country = null): string
     {
         $countryName = function() use ($country) {
             if(empty($country)) return '';

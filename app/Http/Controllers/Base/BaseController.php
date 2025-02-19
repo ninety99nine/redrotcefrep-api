@@ -6,6 +6,7 @@ use Illuminate\View\View;
 use Illuminate\Http\Response;
 use App\Traits\Base\BaseTrait;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 
 class BaseController extends Controller
 {
@@ -16,11 +17,18 @@ class BaseController extends Controller
      *
      * @param mixed $output
      * @param string $status
-     * @return JsonResponse
+     * @return JsonResponse|view
      */
-    protected function prepareOutput($output, string $status = Response::HTTP_OK): JsonResponse|view
+    protected function prepareOutput($output, string $status = Response::HTTP_OK): JsonResponse|View|RedirectResponse
     {
-        if($output instanceof View) return $output;
+        if ($output instanceof View) {
+            return $output;
+        }
+
+        if ($output instanceof RedirectResponse) {
+            return $output;
+        }
+
         return response()->json($output, $status);
     }
 }

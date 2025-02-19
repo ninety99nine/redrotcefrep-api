@@ -153,7 +153,7 @@ class StoreFactory extends Factory
             'pickup_note' => $this->faker->randomElement($pickupNotes),
             'delivery_flat_fee' => $this->faker->randomFloat(2, 0, 100),
             'delivery_note' => $this->faker->randomElement($deliveryNotes),
-            'call_to_action' => $this->faker->randomElement(Store::CALL_TO_ACTION_OPTIONS()),
+            'call_to_action' => 'Buy',
             'number_of_employees' => $this->faker->randomElement([$this->faker->numberBetween(1, 100), null])
         ];
     }
