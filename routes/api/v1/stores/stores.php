@@ -11,7 +11,7 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\WorkflowController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\SubscriptionController;
-use App\Http\Controllers\PaymentMethodController;
+use App\Http\Controllers\StorePaymentMethodController;
 use App\Http\Controllers\DeliveryMethodController;
 
 Route::controller(StoreController::class)
@@ -151,9 +151,9 @@ Route::controller(StoreController::class)
             Route::get('/', 'showTransactions')->name('show.store.transactions');
         });
 
-        //  Payment Methods
-        Route::controller(PaymentMethodController::class)->prefix('payment-methods')->group(function () {
-            Route::get('/', 'showPaymentMethods')->name('show.store.payment.methods');
+        //  Store Payment Methods
+        Route::controller(StorePaymentMethodController::class)->prefix('payment-methods')->group(function () {
+            Route::get('/', 'showStorePaymentMethods')->name('show.store.payment.methods.2');
         });
 
         //  Delivery Methods
