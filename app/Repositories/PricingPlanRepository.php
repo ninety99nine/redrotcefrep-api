@@ -345,11 +345,16 @@ class PricingPlanRepository extends BaseRepository
                 $storeHref = url(route('show.store', ['storeId' => $store->id]));
                 $redirect = config('app.FRONTEND_URI') . '/dashboard/stores/' . $storeHref . '/transaction-outcome' . '?transactionId=' . $transactionId . '&status=successful';
 
-                return view('payment-success', ['redirect' => $redirect]);
+                return view('payment-success', [
+                    'transaction' => $transaction,
+                    'redirect' => $redirect
+                ]);
 
             }
 
         }catch(Exception $e) {
+
+            $failureReason = $e->getMessage();
 
             $transaction->update([
                 'failure_reason' => $e->getMessage(),
@@ -363,12 +368,16 @@ class PricingPlanRepository extends BaseRepository
 
                 if(isset($store) && !empty($store)) {
                     $storeHref = url(route('show.store', ['storeId' => $store->id]));
-                    $redirect = config('app.FRONTEND_URI') . '/dashboard/transaction-status' . '?storeHref=' . $storeHref . '&transactionId=' . $transactionId . '&status=failed' . '&failureReason='.$e->getMessage();
+                    $redirect = config('app.FRONTEND_URI') . '/dashboard/transaction-status' . '?storeHref=' . $storeHref . '&transactionId=' . $transactionId . '&status=failed' . '&failureReason='.$failureReason;
                 }else{
-                    $redirect = config('app.FRONTEND_URI') . '/dashboard/transaction-status' . '?transactionId=' . $transactionId . '&status=failed' . '&failureReason='.$e->getMessage();
+                    $redirect = config('app.FRONTEND_URI') . '/dashboard/transaction-status' . '?transactionId=' . $transactionId . '&status=failed' . '&failureReason='.$failureReason;
                 }
 
-                return view('payment-failure', ['redirect' => $redirect]);
+                return view('payment-failure', [
+                    'failureReason' => $failureReason,
+                    'transaction' => $transaction,
+                    'redirect' => $redirect
+                ]);
             }
 
         }
