@@ -240,7 +240,7 @@ class PricingPlanRepository extends BaseRepository
                 if($response['created']) {
                     $metadata = $response['data'];
                 }else{
-                    return ['requested' => false, 'message' => $response['message']];
+                    return ['successful' => false, 'message' => $response['message']];
                 }
 
                 $transaction->update(['metadata' => $metadata]);

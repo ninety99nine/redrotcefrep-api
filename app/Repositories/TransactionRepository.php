@@ -403,12 +403,17 @@ class TransactionRepository extends BaseRepository
     private function createTransactionPaymentLink(Transaction $transaction): array
     {
         $paymentMethod = $transaction->paymentMethod;
-        $companyToken = $paymentMethod->metadata['company_token'];
 
         if($transaction->owner_type == (new Order())->getResourceName()) {
+
+            $companyToken = null;   //  update to capture the store company token
             $dpoPaymentLinkPayload = $this->getOrderRepository()->prepareDpoPaymentLinkPayload($transaction);
+
         }else if($transaction->owner_type == (new PricingPlan())->getResourceName()) {
+
+            $companyToken = config('app.DPO_COMPANY_TOKEN');
             $dpoPaymentLinkPayload = $this->getPricingPlanRepository()->prepareDpoPaymentLinkPayload($transaction);
+
         }
 
         return DirectPayOnlineService::createPaymentLink($companyToken, $dpoPaymentLinkPayload);
@@ -424,8 +429,17 @@ class TransactionRepository extends BaseRepository
     {
         $paymentMethod = $transaction->paymentMethod;
 
+        if($transaction->owner_type == (new Order())->getResourceName()) {
+
+            $companyToken = null;   //  update to capture the store company token
+
+        }else if($transaction->owner_type == (new PricingPlan())->getResourceName()) {
+
+            $companyToken = config('app.DPO_COMPANY_TOKEN');
+
+        }
+
         if($transaction->metadata) {
-            $companyToken = $paymentMethod->metadata['company_token'];
             $transactionToken = $transaction->metadata['dpo_transaction_token'];
             DirectPayOnlineService::cancelPaymentLink($companyToken, $transactionToken);
         }
