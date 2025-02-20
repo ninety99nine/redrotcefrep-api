@@ -292,7 +292,7 @@ class PricingPlanRepository extends BaseRepository
 
         }catch(Exception $e) {
 
-            return redirect(config('app.FRONTEND_URI') . '/fail-1');
+            return redirect(config('app.FRONTEND_URI') . '/fail-1'.'?error='.$e->getMessage());
 
         }
 
@@ -304,7 +304,7 @@ class PricingPlanRepository extends BaseRepository
 
         }catch(Exception $e) {
 
-            return redirect(config('app.FRONTEND_URI') . '/fail-2');
+            return redirect(config('app.FRONTEND_URI') . '/fail-2'.'?error='.$e->getMessage());
 
         }
             if(!$transaction->isPaid()) {
@@ -324,7 +324,7 @@ class PricingPlanRepository extends BaseRepository
 
             }catch(Exception $e) {
 
-                return redirect(config('app.FRONTEND_URI') . '/fail-3');
+                return redirect(config('app.FRONTEND_URI') . '/fail-3'.'?error='.$e->getMessage());
 
             }
 
@@ -339,7 +339,7 @@ class PricingPlanRepository extends BaseRepository
 
             }catch(Exception $e) {
 
-                return redirect(config('app.FRONTEND_URI') . '/fail-4');
+                return redirect(config('app.FRONTEND_URI') . '/fail-4'.'?error='.$e->getMessage());
 
             }
 
@@ -351,14 +351,14 @@ class PricingPlanRepository extends BaseRepository
 
                 }catch(Exception $e) {
 
-                    return redirect(config('app.FRONTEND_URI') . '/fail-5');
+                    return redirect(config('app.FRONTEND_URI') . '/fail-5'.'?error='.$e->getMessage());
 
                 }
                 try{
                     $metadata = DirectPayOnlineService::verifyPayment($companyToken, $transactionToken);
                 }catch(Exception $e) {
 
-                    return redirect(config('app.FRONTEND_URI') . '/fail-6');
+                    return redirect(config('app.FRONTEND_URI') . '/fail-6'.'?error='.$e->getMessage());
 
                 }
 
@@ -374,7 +374,7 @@ class PricingPlanRepository extends BaseRepository
                         $offersStoreSubscription = $this->offersStoreSubscription($pricingPlan);
                     }catch(Exception $e) {
 
-                        return redirect(config('app.FRONTEND_URI') . '/fail-7-1');
+                        return redirect(config('app.FRONTEND_URI') . '/fail-7-1'.'?error='.$e->getMessage());
 
                     }
 
@@ -382,7 +382,7 @@ class PricingPlanRepository extends BaseRepository
                         $offersAiAssistantSubscription = $this->offersAiAssistantSubscription($pricingPlan);
                     }catch(Exception $e) {
 
-                        return redirect(config('app.FRONTEND_URI') . '/fail-7-2');
+                        return redirect(config('app.FRONTEND_URI') . '/fail-7-2'.'?error='.$e->getMessage());
 
                     }
 
@@ -392,7 +392,7 @@ class PricingPlanRepository extends BaseRepository
                             $storeSubscriptionPayload = $this->prepareStoreSubscriptionPayload($pricingPlan, $transaction);
                         }catch(Exception $e) {
 
-                            return redirect(config('app.FRONTEND_URI') . '/fail-7-3-1');
+                            return redirect(config('app.FRONTEND_URI') . '/fail-7-3-1'.'?error='.$e->getMessage());
 
                         }
                         try{
@@ -412,7 +412,7 @@ class PricingPlanRepository extends BaseRepository
                             }
                         }catch(Exception $e) {
 
-                            return redirect(config('app.FRONTEND_URI') . '/fail-here-1');
+                            return redirect(config('app.FRONTEND_URI') . '/fail-here-1'.'?error='.$e->getMessage());
 
                         }
 
@@ -420,7 +420,7 @@ class PricingPlanRepository extends BaseRepository
                             $subscriptionPayload = $this->getSubscriptionRepository()->prepareSubscriptionPayload($model, $data);
                         }catch(Exception $e) {
 
-                            return redirect(config('app.FRONTEND_URI') . '/fail-here-2');
+                            return redirect(config('app.FRONTEND_URI') . '/fail-here-2'.'?error='.$e->getMessage());
 
                         }
 
@@ -428,7 +428,7 @@ class PricingPlanRepository extends BaseRepository
                             $subscription = \App\Models\Subscription::create($subscriptionPayload);
                         }catch(Exception $e) {
 
-                            return redirect(config('app.FRONTEND_URI') . '/fail-here-3');
+                            return redirect(config('app.FRONTEND_URI') . '/fail-here-3'.'?error='.$e->getMessage());
 
                         }
 
@@ -447,7 +447,7 @@ class PricingPlanRepository extends BaseRepository
                             }
                         }catch(Exception $e) {
 
-                            return redirect(config('app.FRONTEND_URI') . '/fail-here-4');
+                            return redirect(config('app.FRONTEND_URI') . '/fail-here-4'.'?error='.$e->getMessage());
 
                         }
 
@@ -455,7 +455,7 @@ class PricingPlanRepository extends BaseRepository
 
                         }catch(Exception $e) {
 
-                            return redirect(config('app.FRONTEND_URI') . '/fail-7-3-2');
+                            return redirect(config('app.FRONTEND_URI') . '/fail-7-3-2'.'?error='.$e->getMessage());
 
                         }
 
@@ -464,21 +464,21 @@ class PricingPlanRepository extends BaseRepository
                                 $smsMessage = $this->craftStoreSubscriptionPaidMessage($store, $transaction, $subscription);
                             }catch(Exception $e) {
 
-                                    return redirect(config('app.FRONTEND_URI') . '/fail-7-3-3');
+                                    return redirect(config('app.FRONTEND_URI') . '/fail-7-3-3'.'?error='.$e->getMessage());
 
                                 }
                                 try{
                                 SendSms::dispatch($smsMessage, $transaction->requestedByUser->mobile_number->formatE164());
                             }catch(Exception $e) {
 
-                                    return redirect(config('app.FRONTEND_URI') . '/fail-7-3-4');
+                                    return redirect(config('app.FRONTEND_URI') . '/fail-7-3-4'.'?error='.$e->getMessage());
 
                                 }
                             }
                         }
                 }catch(Exception $e) {
 
-                    return redirect(config('app.FRONTEND_URI') . '/fail-7-3');
+                    return redirect(config('app.FRONTEND_URI') . '/fail-7-3'.'?error='.$e->getMessage());
 
                 }
 
@@ -496,7 +496,7 @@ class PricingPlanRepository extends BaseRepository
 
                 }catch(Exception $e) {
 
-                    return redirect(config('app.FRONTEND_URI') . '/fail-7-4');
+                    return redirect(config('app.FRONTEND_URI') . '/fail-7-4'.'?error='.$e->getMessage());
 
                 }
 
@@ -510,7 +510,7 @@ class PricingPlanRepository extends BaseRepository
                     }
                 }catch(Exception $e) {
 
-                    return redirect(config('app.FRONTEND_URI') . '/fail-7-5');
+                    return redirect(config('app.FRONTEND_URI') . '/fail-7-5'.'?error='.$e->getMessage());
 
                 }
 
@@ -523,7 +523,7 @@ class PricingPlanRepository extends BaseRepository
                     }
                 }catch(Exception $e) {
 
-                    return redirect(config('app.FRONTEND_URI') . '/fail-7-6');
+                    return redirect(config('app.FRONTEND_URI') . '/fail-7-6'.'?error='.$e->getMessage());
 
                 }
 
@@ -534,7 +534,7 @@ class PricingPlanRepository extends BaseRepository
                     ];
                 }catch(Exception $e) {
 
-                    return redirect(config('app.FRONTEND_URI') . '/fail-7-7');
+                    return redirect(config('app.FRONTEND_URI') . '/fail-7-7'.'?error='.$e->getMessage());
 
                 }
 
@@ -547,7 +547,7 @@ class PricingPlanRepository extends BaseRepository
                     ]);
                 }catch(Exception $e) {
 
-                    return redirect(config('app.FRONTEND_URI') . '/fail-8');
+                    return redirect(config('app.FRONTEND_URI') . '/fail-8'.'?error='.$e->getMessage());
 
                 }
 
@@ -567,7 +567,7 @@ class PricingPlanRepository extends BaseRepository
                 $storeHref = ltrim(parse_url(route('show.store', ['storeId' => $store->id]), PHP_URL_PATH), '/');
             }catch(Exception $e) {
 
-                return redirect(config('app.FRONTEND_URI') . '/fail-9');
+                return redirect(config('app.FRONTEND_URI') . '/fail-9'.'?error='.$e->getMessage());
 
             }
 
@@ -575,7 +575,7 @@ class PricingPlanRepository extends BaseRepository
                 return redirect(config('app.FRONTEND_URI') . '/success');
             }catch(Exception $e) {
 
-                return redirect(config('app.FRONTEND_URI') . '/fail-10');
+                return redirect(config('app.FRONTEND_URI') . '/fail-10'.'?error='.$e->getMessage());
 
             }
 
