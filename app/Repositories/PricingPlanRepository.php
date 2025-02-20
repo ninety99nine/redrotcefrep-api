@@ -322,6 +322,7 @@ class PricingPlanRepository extends BaseRepository
                     $transactionToken = $transaction->metadata['dpo_transaction_token'];
                     $metadata = DirectPayOnlineService::verifyPayment($companyToken, $transactionToken);
 
+
                     $this->offerPricingPlan($store, $aiAssistant, $pricingPlan, $transaction);
 
                     $transaction->update([
@@ -344,7 +345,7 @@ class PricingPlanRepository extends BaseRepository
             }else{
 
                 $storeHref = ltrim(parse_url(route('show.store', ['storeId' => $store->id]), PHP_URL_PATH), '/');
-                return redirect(config('app.FRONTEND_URI') . '/dashboard/stores/' . $storeHref . '/transaction-outcome' . '?transactionId=' . $transactionId . '&status=successful');
+                return redirect(config('app.FRONTEND_URI') . '/success');
 
             }
 
@@ -360,7 +361,7 @@ class PricingPlanRepository extends BaseRepository
                 return ['verified' => false, 'message' => $e->getMessage()];
             }else{
                 $storeHref = ltrim(parse_url(route('show.store', ['storeId' => $store->id]), PHP_URL_PATH), '/');
-                return redirect(config('app.FRONTEND_URI') . '/dashboard/stores/' . $storeHref . '/transaction-outcome' . '?transactionId=' . $transactionId . '&status=failed' . '&failureReason='.$e->getMessage());
+                return redirect(config('app.FRONTEND_URI') . '/fail');
             }
 
         }
