@@ -343,7 +343,7 @@ class PricingPlanRepository extends BaseRepository
             }else{
 
                 $storeHref = url(route('show.store', ['storeId' => $store->id]));
-                $redirect = config('app.FRONTEND_URI') . '/dashboard/stores/' . $storeHref . '/transaction-outcome' . '?transactionId=' . $transactionId . '&status=successful';
+                $redirect = config('app.FRONTEND_URI') . '/dashboard/transaction-status' . '?storeHref=' . $storeHref . '&transactionId=' . $transactionId . '&status=successful';
 
                 return view('payment-success', [
                     'transaction' => $transaction,
