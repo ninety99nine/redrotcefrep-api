@@ -343,7 +343,8 @@ class PricingPlanRepository extends BaseRepository
             }else{
 
                 $storeHref = url(route('show.store', ['storeId' => $store->id]));
-                $redirect = config('app.FRONTEND_URI') . '/dashboard/transaction-status' . '?storeHref=' . $storeHref . '&transactionId=' . $transactionId . '&status=successful';
+                $transactionHref = url(route('show.transaction', ['transactionId' => $transaction->id]));
+                $redirect = config('app.FRONTEND_URI') . '/dashboard/transaction-status' . '?storeHref=' . $storeHref . '&transactionHref=' . $transactionHref . '&status=successful';
 
                 return view('payment-success', [
                     'transaction' => $transaction,
@@ -366,11 +367,13 @@ class PricingPlanRepository extends BaseRepository
                 return ['verified' => false, 'message' => $e->getMessage()];
             }else{
 
+                $transactionHref = url(route('show.transaction', ['transactionId' => $transaction->id]));
+
                 if(isset($store) && !empty($store)) {
                     $storeHref = url(route('show.store', ['storeId' => $store->id]));
-                    $redirect = config('app.FRONTEND_URI') . '/dashboard/transaction-status' . '?storeHref=' . $storeHref . '&transactionId=' . $transactionId . '&status=failed' . '&failureReason='.$failureReason;
+                    $redirect = config('app.FRONTEND_URI') . '/dashboard/transaction-status' . '?storeHref=' . $storeHref . '&transactionHref=' . $transactionHref . '&status=failed' . '&failureReason='.$failureReason;
                 }else{
-                    $redirect = config('app.FRONTEND_URI') . '/dashboard/transaction-status' . '?transactionId=' . $transactionId . '&status=failed' . '&failureReason='.$failureReason;
+                    $redirect = config('app.FRONTEND_URI') . '/dashboard/transaction-status' . '?transactionHref=' . $transactionHref . '&status=failed' . '&failureReason='.$failureReason;
                 }
 
                 return view('payment-failure', [
