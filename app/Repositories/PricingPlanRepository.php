@@ -304,7 +304,7 @@ class PricingPlanRepository extends BaseRepository
 
                     /** @var Store|null $store */
                     $store = $transaction->store;
-                    if(!$store) ['verified' => false, 'message' => 'The transaction store does not exist'];
+                    if(!$store) return ['verified' => false, 'message' => 'The transaction store does not exist'];
 
                 }
 
@@ -342,10 +342,8 @@ class PricingPlanRepository extends BaseRepository
                 return $this->showSavedResource($transaction, 'verified');
 
             }else{
-
-                $storeHref = ltrim(parse_url(route('show.store', ['storeId' => $store->id]), PHP_URL_PATH), '/');
+                $storeHref = url(route('show.store', ['storeId' => $store->id]));
                 return redirect(config('app.FRONTEND_URI') . '/dashboard/stores/' . $storeHref . '/transaction-outcome' . '?transactionId=' . $transactionId . '&status=successful');
-
             }
 
         }catch(Exception $e) {
@@ -359,7 +357,7 @@ class PricingPlanRepository extends BaseRepository
             if(request()->wantsJson()) {
                 return ['verified' => false, 'message' => $e->getMessage()];
             }else{
-                $storeHref = ltrim(parse_url(route('show.store', ['storeId' => $store->id]), PHP_URL_PATH), '/');
+                $storeHref = url(route('show.store', ['storeId' => $store->id]));
                 return redirect(config('app.FRONTEND_URI') . '/dashboard/stores/' . $storeHref . '/transaction-outcome' . '?transactionId=' . $transactionId . '&status=failed' . '&failureReason='.$e->getMessage());
             }
 
