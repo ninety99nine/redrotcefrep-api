@@ -290,12 +290,26 @@ class PricingPlanRepository extends BaseRepository
             $pricingPlan = PricingPlan::find($pricingPlanId);
             if(!$pricingPlan) return ['verified' => false, 'message' => 'This pricing plan does not exist'];
 
+        }catch(Exception $e) {
+            
+            return redirect(config('app.FRONTEND_URI') . '/fail-1');
+
+        }
+
+        try{
+
             /** @var Transaction|null $transaction */
             $transaction = Transaction::with(['owner', 'store', 'aiAssistant', 'paymentMethod'])->find($transactionId);
             if(!$transaction) return ['verified' => false, 'message' => 'The transaction does not exist'];
 
+        }catch(Exception $e) {
+            
+            return redirect(config('app.FRONTEND_URI') . '/fail-2');
+
+        }
             if(!$transaction->isPaid()) {
 
+                try{
                 /** @var PaymentMethod|null $paymentMethod */
                 $paymentMethod = $transaction->paymentMethod;
                 if(!$paymentMethod) ['verified' => false, 'message' => 'The transaction payment method does not exist'];
@@ -308,6 +322,13 @@ class PricingPlanRepository extends BaseRepository
 
                 }
 
+            }catch(Exception $e) {
+            
+                return redirect(config('app.FRONTEND_URI') . '/fail-3');
+    
+            }
+
+            try{
                 if($this->offersAiAssistantSubscription($pricingPlan)) {
 
                     /** @var AiAssistant|null $aiAssistant */
@@ -316,21 +337,52 @@ class PricingPlanRepository extends BaseRepository
 
                 }
 
+            }catch(Exception $e) {
+            
+                return redirect(config('app.FRONTEND_URI') . '/fail-4');
+    
+            }
+
                 if($paymentMethod->isDpo()) {
 
+                    try{
                     $companyToken = config('app.DPO_COMPANY_TOKEN');
                     $transactionToken = $transaction->metadata['dpo_transaction_token'];
+
+                }catch(Exception $e) {
+                
+                    return redirect(config('app.FRONTEND_URI') . '/fail-5');
+        
+                }
+                try{
                     $metadata = DirectPayOnlineService::verifyPayment($companyToken, $transactionToken);
+                }catch(Exception $e) {
+                
+                    return redirect(config('app.FRONTEND_URI') . '/fail-6');
+        
+                }
 
 
+                try{
                     $this->offerPricingPlan($store, $aiAssistant, $pricingPlan, $transaction);
+                }catch(Exception $e) {
+                
+                    return redirect(config('app.FRONTEND_URI') . '/fail-7');
+        
+                }
 
+                try{
                     $transaction->update([
                         'failure_type' => null,
                         'failure_reason' => null,
                         'payment_status' => TransactionPaymentStatus::PAID->value,
                         'metadata' => array_merge($transaction->metadata, $metadata)
                     ]);
+                }catch(Exception $e) {
+                
+                    return redirect(config('app.FRONTEND_URI') . '/fail-8');
+        
+                }
 
                 }else{
                     return ['verified' => false, 'message' => 'The "'.$paymentMethod->name.'" payment method cannot be used to verify transaction payment'];
@@ -344,27 +396,23 @@ class PricingPlanRepository extends BaseRepository
 
             }else{
 
+                try{
                 $storeHref = ltrim(parse_url(route('show.store', ['storeId' => $store->id]), PHP_URL_PATH), '/');
+            }catch(Exception $e) {
+            
+                return redirect(config('app.FRONTEND_URI') . '/fail-9');
+    
+            }
+
+            try{
                 return redirect(config('app.FRONTEND_URI') . '/success');
-
+            }catch(Exception $e) {
+            
+                return redirect(config('app.FRONTEND_URI') . '/fail-10');
+    
             }
 
-        }catch(Exception $e) {
-
-            $transaction->update([
-                'failure_reason' => $e->getMessage(),
-                'payment_status' => TransactionPaymentStatus::FAILED_PAYMENT->value,
-                'failure_type' => TransactionFailureType::PAYMENT_VERIFICATION_FAILED->value
-            ]);
-
-            if(request()->wantsJson()) {
-                return ['verified' => false, 'message' => $e->getMessage()];
-            }else{
-                $storeHref = ltrim(parse_url(route('show.store', ['storeId' => $store->id]), PHP_URL_PATH), '/');
-                return redirect(config('app.FRONTEND_URI') . '/fail');
             }
-
-        }
     }
 
     /***********************************************
