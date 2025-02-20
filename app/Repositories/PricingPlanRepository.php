@@ -396,7 +396,63 @@ class PricingPlanRepository extends BaseRepository
 
                         }
                         try{
-                            $subscription = $this->getSubscriptionRepository()->shouldReturnModel()->createSubscription($storeSubscriptionPayload, $store);
+                            $data = $storeSubscriptionPayload;
+                            $model = $store;
+
+                            try{
+                            if($model == null) {
+                                if(!$this->isAuthourized()) return ['message' => 'You do not have permission to create subscriptions'];
+                                if(isset($data['store_id'])) {
+                                    $model = Store::find($data['store_id']);
+                                    if(!$model) return ['created' => false, 'message' => 'This store does not exist'];
+                                }else if(isset($data['ai_assistant_id'])) {
+                                    $model = AiAssistant::find($data['ai_assistant_id']);
+                                    if(!$model) return ['created' => false, 'message' => 'This AI Assistant does not exist'];
+                                }
+                            }
+                        }catch(Exception $e) {
+
+                            return redirect(config('app.FRONTEND_URI') . '/fail-here-1');
+
+                        }
+
+                        try{
+                            $subscriptionPayload = $this->getSubscriptionRepository()->prepareSubscriptionPayload($model, $data);
+                        }catch(Exception $e) {
+
+                            return redirect(config('app.FRONTEND_URI') . '/fail-here-2');
+
+                        }
+
+                        try{
+                            $subscription = \App\Models\Subscription::create($subscriptionPayload);
+                        }catch(Exception $e) {
+
+                            return redirect(config('app.FRONTEND_URI') . '/fail-here-3');
+
+                        }
+
+                        try{
+                            if(($aiAssistant = $model) instanceof AiAssistant) {
+                                if(isset($data['replace_credits']) && $this->isTruthy($data['replace_credits'])) {
+                                    $totalPaidCredits = $data['credits'];
+                                }else{
+                                    $totalPaidCredits = $aiAssistant->remaining_paid_tokens + $data['credits'];
+                                }
+
+                                $aiAssistant->update([
+                                    'total_paid_tokens' => $totalPaidCredits,
+                                    'remaining_paid_tokens' => $totalPaidCredits
+                                ]);
+                            }
+                        }catch(Exception $e) {
+
+                            return redirect(config('app.FRONTEND_URI') . '/fail-here-4');
+
+                        }
+
+                        //  return $this->showCreatedResource($subscription);
+
                         }catch(Exception $e) {
 
                             return redirect(config('app.FRONTEND_URI') . '/fail-7-3-2');

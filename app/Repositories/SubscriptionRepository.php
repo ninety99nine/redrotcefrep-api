@@ -261,7 +261,7 @@ class SubscriptionRepository extends BaseRepository
      * @param array $data
      * @return array
      */
-    private function prepareSubscriptionPayload(Model $model, array $data): array
+    public function prepareSubscriptionPayload(Model $model, array $data): array
     {
         $duration = $data['duration'];
         $frequency = $data['frequency'];
