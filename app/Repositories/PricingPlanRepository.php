@@ -290,26 +290,12 @@ class PricingPlanRepository extends BaseRepository
             $pricingPlan = PricingPlan::find($pricingPlanId);
             if(!$pricingPlan) return ['verified' => false, 'message' => 'This pricing plan does not exist'];
 
-        }catch(Exception $e) {
-
-            return redirect(config('app.FRONTEND_URI') . '/fail-1'.'?error='.$e->getMessage());
-
-        }
-
-        try{
-
             /** @var Transaction|null $transaction */
             $transaction = Transaction::with(['owner', 'store', 'aiAssistant', 'paymentMethod'])->find($transactionId);
             if(!$transaction) return ['verified' => false, 'message' => 'The transaction does not exist'];
 
-        }catch(Exception $e) {
-
-            return redirect(config('app.FRONTEND_URI') . '/fail-2'.'?error='.$e->getMessage());
-
-        }
             if(!$transaction->isPaid()) {
 
-                try{
                 /** @var PaymentMethod|null $paymentMethod */
                 $paymentMethod = $transaction->paymentMethod;
                 if(!$paymentMethod) ['verified' => false, 'message' => 'The transaction payment method does not exist'];
@@ -322,13 +308,6 @@ class PricingPlanRepository extends BaseRepository
 
                 }
 
-            }catch(Exception $e) {
-
-                return redirect(config('app.FRONTEND_URI') . '/fail-3'.'?error='.$e->getMessage());
-
-            }
-
-            try{
                 if($this->offersAiAssistantSubscription($pricingPlan)) {
 
                     /** @var AiAssistant|null $aiAssistant */
@@ -337,219 +316,20 @@ class PricingPlanRepository extends BaseRepository
 
                 }
 
-            }catch(Exception $e) {
+                if($paymentMethod->isDpo()) {
 
-                return redirect(config('app.FRONTEND_URI') . '/fail-4'.'?error='.$e->getMessage());
-
-            }
-
-            if($paymentMethod->isDpo()) {
-
-                    try{
                     $companyToken = config('app.DPO_COMPANY_TOKEN');
                     $transactionToken = $transaction->metadata['dpo_transaction_token'];
-
-                }catch(Exception $e) {
-
-                    return redirect(config('app.FRONTEND_URI') . '/fail-5'.'?error='.$e->getMessage());
-
-                }
-                try{
                     $metadata = DirectPayOnlineService::verifyPayment($companyToken, $transactionToken);
-                }catch(Exception $e) {
 
-                    return redirect(config('app.FRONTEND_URI') . '/fail-6'.'?error='.$e->getMessage());
+                    $this->offerPricingPlan($store, $aiAssistant, $pricingPlan, $transaction);
 
-                }
-
-
-                    if($this->offersSubscription($pricingPlan)) {
-
-                        try{
-                        $message = 'Subscription created';
-
-                        /** @var PaymentMethod $paymentMethod */
-                        $paymentMethod = $transaction->paymentMethod;
-
-                        $offersStoreSubscription = $this->offersStoreSubscription($pricingPlan);
-                    }catch(Exception $e) {
-
-                        return redirect(config('app.FRONTEND_URI') . '/fail-7-1'.'?error='.$e->getMessage());
-
-                    }
-
-                try{
-                        $offersAiAssistantSubscription = $this->offersAiAssistantSubscription($pricingPlan);
-                    }catch(Exception $e) {
-
-                        return redirect(config('app.FRONTEND_URI') . '/fail-7-2'.'?error='.$e->getMessage());
-
-                    }
-
-                    try{
-                        if($offersStoreSubscription) {
-                            try{
-                            $storeSubscriptionPayload = $this->prepareStoreSubscriptionPayload($pricingPlan, $transaction);
-                        }catch(Exception $e) {
-
-                            return redirect(config('app.FRONTEND_URI') . '/fail-7-3-1'.'?error='.$e->getMessage());
-
-                        }
-                        try{
-                            $data = $storeSubscriptionPayload;
-                            $model = $store;
-
-                            try{
-                            if($model == null) {
-                                if(!$this->isAuthourized()) return ['message' => 'You do not have permission to create subscriptions'];
-                                if(isset($data['store_id'])) {
-                                    $model = Store::find($data['store_id']);
-                                    if(!$model) return ['created' => false, 'message' => 'This store does not exist'];
-                                }else if(isset($data['ai_assistant_id'])) {
-                                    $model = AiAssistant::find($data['ai_assistant_id']);
-                                    if(!$model) return ['created' => false, 'message' => 'This AI Assistant does not exist'];
-                                }
-                            }
-                        }catch(Exception $e) {
-
-                            return redirect(config('app.FRONTEND_URI') . '/fail-here-1'.'?error='.$e->getMessage());
-
-                        }
-
-                        try{
-                            $subscriptionPayload = $this->getSubscriptionRepository()->prepareSubscriptionPayload($model, $data);
-                        }catch(Exception $e) {
-
-                            return redirect(config('app.FRONTEND_URI') . '/fail-here-2'.'?error='.$e->getMessage());
-
-                        }
-
-                        try{
-                            $subscription = \App\Models\Subscription::create($subscriptionPayload);
-                        }catch(Exception $e) {
-
-                            return redirect(config('app.FRONTEND_URI') . '/fail-here-3'.'?error='.$e->getMessage());
-
-                        }
-
-                        try{
-                            if(($aiAssistant = $model) instanceof AiAssistant) {
-                                if(isset($data['replace_credits']) && $this->isTruthy($data['replace_credits'])) {
-                                    $totalPaidCredits = $data['credits'];
-                                }else{
-                                    $totalPaidCredits = $aiAssistant->remaining_paid_tokens + $data['credits'];
-                                }
-
-                                $aiAssistant->update([
-                                    'total_paid_tokens' => $totalPaidCredits,
-                                    'remaining_paid_tokens' => $totalPaidCredits
-                                ]);
-                            }
-                        }catch(Exception $e) {
-
-                            return redirect(config('app.FRONTEND_URI') . '/fail-here-4'.'?error='.$e->getMessage());
-
-                        }
-
-                        //  return $this->showCreatedResource($subscription);
-
-                        }catch(Exception $e) {
-
-                            return redirect(config('app.FRONTEND_URI') . '/fail-7-3-2'.'?error='.$e->getMessage());
-
-                        }
-
-                            if($paymentMethod->isOrangeAirtime()) {
-                                try{
-                                $smsMessage = $this->craftStoreSubscriptionPaidMessage($store, $transaction, $subscription);
-                            }catch(Exception $e) {
-
-                                    return redirect(config('app.FRONTEND_URI') . '/fail-7-3-3'.'?error='.$e->getMessage());
-
-                                }
-                                try{
-                                SendSms::dispatch($smsMessage, $transaction->requestedByUser->mobile_number->formatE164());
-                            }catch(Exception $e) {
-
-                                    return redirect(config('app.FRONTEND_URI') . '/fail-7-3-4'.'?error='.$e->getMessage());
-
-                                }
-                            }
-                        }
-                }catch(Exception $e) {
-
-                    return redirect(config('app.FRONTEND_URI') . '/fail-7-3'.'?error='.$e->getMessage());
-
-                }
-
-                try{
-                        if($offersAiAssistantSubscription) {
-                            $aiAssistantSubscriptionPayload = $this->prepareAiAssistantSubscriptionPayload($pricingPlan, $transaction);
-                            $subscription = $this->getSubscriptionRepository()->shouldReturnModel()->createSubscription($aiAssistantSubscriptionPayload, $aiAssistant);
-
-                            if($paymentMethod->isOrangeAirtime()) {
-                                $smsMessage = $this->craftAIAssistantSubscriptionPaidMessage($transaction, $subscription);
-                                SendSms::dispatch($smsMessage, $transaction->requestedByUser->mobile_number->formatE164());
-                            }
-                        }
-
-
-                }catch(Exception $e) {
-
-                    return redirect(config('app.FRONTEND_URI') . '/fail-7-4'.'?error='.$e->getMessage());
-
-                }
-
-                try{
-                    if($this->offersSmsCredits($pricingPlan) || $this->offersEmailCredits($pricingPlan) || $this->offersWhatsappCredits($pricingPlan)) {
-
-                        if(!isset($message)) $message = 'Credits added';
-                        $prepareStoreQuotaPayload = $this->prepareStoreQuotaPayload($store, $pricingPlan);
-                        $this->getStoreRepository()->authourize()->shouldReturnModel()->updateStoreQuota($store, $prepareStoreQuotaPayload);
-
-                    }
-                }catch(Exception $e) {
-
-                    return redirect(config('app.FRONTEND_URI') . '/fail-7-5'.'?error='.$e->getMessage());
-
-                }
-
-                try{
-                    if($this->offersAiAssistantTopUpCredits($pricingPlan)) {
-
-                        if(!isset($message)) $message = 'Credits added';
-                        $aiAssistant->update(['remaining_paid_top_up_tokens' => $aiAssistant->ai_assistant_top_up_credits + $pricingPlan->metadata['ai_assistant_top_up_credits']]);
-
-                    }
-                }catch(Exception $e) {
-
-                    return redirect(config('app.FRONTEND_URI') . '/fail-7-6'.'?error='.$e->getMessage());
-
-                }
-
-                try{
-                    return [
-                        'successful' => true,
-                        'message' => $message
-                    ];
-                }catch(Exception $e) {
-
-                    return redirect(config('app.FRONTEND_URI') . '/fail-7-7'.'?error='.$e->getMessage());
-
-                }
-
-                try{
                     $transaction->update([
                         'failure_type' => null,
                         'failure_reason' => null,
                         'payment_status' => TransactionPaymentStatus::PAID->value,
                         'metadata' => array_merge($transaction->metadata, $metadata)
                     ]);
-                }catch(Exception $e) {
-
-                    return redirect(config('app.FRONTEND_URI') . '/fail-8'.'?error='.$e->getMessage());
-
-                }
 
                 }else{
                     return ['verified' => false, 'message' => 'The "'.$paymentMethod->name.'" payment method cannot be used to verify transaction payment'];
@@ -563,23 +343,26 @@ class PricingPlanRepository extends BaseRepository
 
             }else{
 
-                try{
                 $storeHref = ltrim(parse_url(route('show.store', ['storeId' => $store->id]), PHP_URL_PATH), '/');
-            }catch(Exception $e) {
-
-                return redirect(config('app.FRONTEND_URI') . '/fail-9'.'?error='.$e->getMessage());
+                return redirect(config('app.FRONTEND_URI') . '/dashboard/stores/' . $storeHref . '/transaction-outcome' . '?transactionId=' . $transactionId . '&status=successful');
 
             }
 
-            try{
-                return redirect(config('app.FRONTEND_URI') . '/success');
-            }catch(Exception $e) {
+        }catch(Exception $e) {
 
-                return redirect(config('app.FRONTEND_URI') . '/fail-10'.'?error='.$e->getMessage());
+            $transaction->update([
+                'failure_reason' => $e->getMessage(),
+                'payment_status' => TransactionPaymentStatus::FAILED_PAYMENT->value,
+                'failure_type' => TransactionFailureType::PAYMENT_VERIFICATION_FAILED->value
+            ]);
 
+            if(request()->wantsJson()) {
+                return ['verified' => false, 'message' => $e->getMessage()];
+            }else{
+                $storeHref = ltrim(parse_url(route('show.store', ['storeId' => $store->id]), PHP_URL_PATH), '/');
+                return redirect(config('app.FRONTEND_URI') . '/dashboard/stores/' . $storeHref . '/transaction-outcome' . '?transactionId=' . $transactionId . '&status=failed' . '&failureReason='.$e->getMessage());
             }
 
-            }
         }
     }
 
