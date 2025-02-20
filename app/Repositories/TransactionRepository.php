@@ -196,16 +196,16 @@ class TransactionRepository extends BaseRepository
 
             if($isAuthourized) {
 
-                if($transaction->isSubjectToManualVerification()) return ['renewed' => false, 'message' => 'Transaction has been manually verified and cannot be renewed'];
-                if($transaction->isPaid()) return ['renewed' => false, 'message' => 'Transaction has been paid and cannot be renewed'];
+                if($transaction->isSubjectToManualVerification()) return ['successful' => false, 'message' => 'Transaction has been manually verified and cannot be successful'];
+                if($transaction->isPaid()) return ['successful' => false, 'message' => 'Transaction has been paid and cannot be successful'];
 
                 /** @var PaymentMethod|null $paymentMethod */
                 $paymentMethod = $transaction->paymentMethod;
-                if(!$paymentMethod) ['renewed' => false, 'message' => 'The transaction payment method does not exist'];
+                if(!$paymentMethod) ['successful' => false, 'message' => 'The transaction payment method does not exist'];
 
                 if($paymentMethod->isDPO()) {
 
-                    if(Carbon::parse($transaction->metadata['dpo_payment_url_expires_at'])->isFuture()) return ['renewed' => false, 'message' => 'Transaction has not yet expired therefore cannot be renewed'];
+                    if(Carbon::parse($transaction->metadata['dpo_payment_url_expires_at'])->isFuture()) return ['successful' => false, 'message' => 'Transaction has not yet expired therefore cannot be successful'];
 
                     $this->cancelTransactionPaymentLink($transaction);
                     $response = $this->createTransactionPaymentLink($transaction);
@@ -213,7 +213,7 @@ class TransactionRepository extends BaseRepository
                     if($response['created']) {
                         $metadata = $response['data'];
                     }else{
-                        return ['requested' => false, 'message' => $response['message']];
+                        return ['successful' => false, 'message' => $response['message']];
                     }
 
                     $transaction->update(['metadata' => $metadata]);
@@ -225,15 +225,15 @@ class TransactionRepository extends BaseRepository
                     ];
 
                 }else{
-                    return ['renewed' => false, 'message' => 'The "'.$paymentMethod->name.'" payment method cannot be used to renew transaction'];
+                    return ['successful' => false, 'message' => 'The "'.$paymentMethod->name.'" payment method cannot be used to renew transaction'];
                 }
 
             }else{
-                return ['renewed' => false, 'message' => 'You do not have permission to renew transaction payment link'];
+                return ['successful' => false, 'message' => 'You do not have permission to renew transaction payment link'];
             }
 
         }else{
-            return ['renewed' => false, 'message' => 'This transaction does not exist'];
+            return ['successful' => false, 'message' => 'This transaction does not exist'];
         }
     }
 

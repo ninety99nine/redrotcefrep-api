@@ -342,9 +342,8 @@ class PricingPlanRepository extends BaseRepository
 
             }else{
 
-                $storeHref = url(route('show.store', ['storeId' => $store->id]));
                 $transactionHref = url(route('show.transaction', ['transactionId' => $transaction->id]));
-                $redirect = config('app.FRONTEND_URI') . '/dashboard/transaction-status' . '?storeHref=' . $storeHref . '&transactionHref=' . $transactionHref . '&status=successful';
+                $redirect = config('app.FRONTEND_URI') . '/dashboard/transaction-status' . '?transactionHref=' . $transactionHref;
 
                 return view('payment-success', [
                     'transaction' => $transaction,
@@ -354,8 +353,6 @@ class PricingPlanRepository extends BaseRepository
             }
 
         }catch(Exception $e) {
-
-            $failureReason = $e->getMessage();
 
             $transaction->update([
                 'failure_reason' => $e->getMessage(),
@@ -368,19 +365,13 @@ class PricingPlanRepository extends BaseRepository
             }else{
 
                 $transactionHref = url(route('show.transaction', ['transactionId' => $transaction->id]));
-
-                if(isset($store) && !empty($store)) {
-                    $storeHref = url(route('show.store', ['storeId' => $store->id]));
-                    $redirect = config('app.FRONTEND_URI') . '/dashboard/transaction-status' . '?storeHref=' . $storeHref . '&transactionHref=' . $transactionHref . '&status=failed' . '&failureReason='.$failureReason;
-                }else{
-                    $redirect = config('app.FRONTEND_URI') . '/dashboard/transaction-status' . '?transactionHref=' . $transactionHref . '&status=failed' . '&failureReason='.$failureReason;
-                }
+                $redirect = config('app.FRONTEND_URI') . '/dashboard/transaction-status' . '?transactionHref=' . $transactionHref;
 
                 return view('payment-failure', [
-                    'failureReason' => $failureReason,
                     'transaction' => $transaction,
                     'redirect' => $redirect
                 ]);
+
             }
 
         }
