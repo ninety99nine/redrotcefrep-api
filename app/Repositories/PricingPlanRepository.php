@@ -338,9 +338,14 @@ class PricingPlanRepository extends BaseRepository
             }
 
             if(request()->wantsJson()) {
+
                 return $this->showSavedResource($transaction, 'verified');
+
             }else{
-                return redirect(config('app.FRONTEND_URI') . '/dashboard/stores/' . route('show.store', ['storeId' => $store->id]) . '/transaction-outcome' . '?transactionId=' . $transactionId . '&status=successful');
+
+                $storeHref = ltrim(parse_url(route('show.store', ['storeId' => $store->id]), PHP_URL_PATH), '/');
+                return redirect(config('app.FRONTEND_URI') . '/dashboard/stores/' . $storeHref . '/transaction-outcome' . '?transactionId=' . $transactionId . '&status=successful');
+
             }
 
         }catch(Exception $e) {
@@ -354,7 +359,8 @@ class PricingPlanRepository extends BaseRepository
             if(request()->wantsJson()) {
                 return ['verified' => false, 'message' => $e->getMessage()];
             }else{
-                return redirect(config('app.FRONTEND_URI') . '/dashboard/stores/' . route('show.store', ['storeId' => $store->id]) . '/transaction-outcome' . '?transactionId=' . $transactionId . '&status=failed' . '&failureReason='.$e->getMessage());
+                $storeHref = ltrim(parse_url(route('show.store', ['storeId' => $store->id]), PHP_URL_PATH), '/');
+                return redirect(config('app.FRONTEND_URI') . '/dashboard/stores/' . $storeHref . '/transaction-outcome' . '?transactionId=' . $transactionId . '&status=failed' . '&failureReason='.$e->getMessage());
             }
 
         }
