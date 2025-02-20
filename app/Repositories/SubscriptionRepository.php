@@ -265,17 +265,12 @@ class SubscriptionRepository extends BaseRepository
     {
         $duration = $data['duration'];
         $frequency = $data['frequency'];
+        $userId = $data['user_id'] ?? null;
         $transactionId = isset($data['transaction_id']) ? $data['transaction_id'] : null;
         $pricingPlanId = isset($data['pricing_plan_id']) ? $data['pricing_plan_id'] : null;
 
         $subscription = $model->subscriptions()->orderBy('end_at', 'DESC')->first();
         $startAt = $subscription ? $subscription->end_at : now();
-
-        if($this->isAuthourized() && isset($data['user_id'])) {
-            $userId = $data['user_id'];
-        }else{
-            $userId = request()->current_user->id;
-        }
 
         return [
             'user_id' => $userId,
