@@ -35,7 +35,8 @@
     <script type="text/javascript">
 
         // Redirect to the provided URL
-        //  window.location.href = "{{ $redirect }}";
+        window.location.href = "{{ $redirect }}";
 
     </script>
+
 @endsection
