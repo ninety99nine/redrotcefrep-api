@@ -342,8 +342,12 @@ class PricingPlanRepository extends BaseRepository
                 return $this->showSavedResource($transaction, 'verified');
 
             }else{
+
                 $storeHref = url(route('show.store', ['storeId' => $store->id]));
-                return redirect(config('app.FRONTEND_URI') . '/dashboard/stores/' . $storeHref . '/transaction-outcome' . '?transactionId=' . $transactionId . '&status=successful');
+                $redirect = config('app.FRONTEND_URI') . '/dashboard/stores/' . $storeHref . '/transaction-outcome' . '?transactionId=' . $transactionId . '&status=successful';
+
+                return view('payment-success', ['redirect' => $redirect]);
+
             }
 
         }catch(Exception $e) {
@@ -357,8 +361,15 @@ class PricingPlanRepository extends BaseRepository
             if(request()->wantsJson()) {
                 return ['verified' => false, 'message' => $e->getMessage()];
             }else{
-                $storeHref = url(route('show.store', ['storeId' => $store->id]));
-                return redirect(config('app.FRONTEND_URI') . '/dashboard/stores/' . $storeHref . '/transaction-outcome' . '?transactionId=' . $transactionId . '&status=failed' . '&failureReason='.$e->getMessage());
+
+                if(isset($store) && !empty($store)) {
+                    $storeHref = url(route('show.store', ['storeId' => $store->id]));
+                    $redirect = config('app.FRONTEND_URI') . '/dashboard/transaction-status' . '?storeHref=' . $storeHref . '&transactionId=' . $transactionId . '&status=failed' . '&failureReason='.$e->getMessage();
+                }else{
+                    $redirect = config('app.FRONTEND_URI') . '/dashboard/transaction-status' . '?transactionId=' . $transactionId . '&status=failed' . '&failureReason='.$e->getMessage();
+                }
+
+                return view('payment-failure', ['redirect' => $redirect]);
             }
 
         }

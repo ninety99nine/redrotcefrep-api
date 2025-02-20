@@ -30,4 +30,12 @@
         </div>
 
     </div>
+
+    <!-- JavaScript to trigger immediate redirect -->
+    <script type="text/javascript">
+
+        // Redirect to the provided URL
+        window.location.href = "{{ $redirect }}";
+
+    </script>
 @endsection
