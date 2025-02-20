@@ -15,7 +15,6 @@ use App\Traits\Base\BaseTrait;
 use App\Enums\PaymentMethodType;
 use Illuminate\Support\Collection;
 use App\Traits\MessageCrafterTrait;
-use Illuminate\Http\RedirectResponse;
 use App\Enums\TransactionFailureType;
 use App\Enums\TransactionPaymentStatus;
 use Illuminate\Database\Eloquent\Builder;
@@ -280,9 +279,9 @@ class PricingPlanRepository extends BaseRepository
      *
      * @param string $pricingPlanId
      * @param string $transactionId
-     * @return RedirectResponse|array
+     * @return View|array
      */
-    public function verifyPricingPlanPayment(string $pricingPlanId, string $transactionId): RedirectResponse|array
+    public function verifyPricingPlanPayment(string $pricingPlanId, string $transactionId): View|array
     {
         try{
 

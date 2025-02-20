@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\View\View;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\RedirectResponse;
 use App\Repositories\PricingPlanRepository;
 use App\Http\Controllers\Base\BaseController;
 use App\Http\Requests\Models\PricingPlan\PayPricingPlanRequest;
@@ -124,9 +124,9 @@ class PricingPlanController extends BaseController
      *
      * @param string $pricingPlanId
      * @param string $transactionId
-     * @return JsonResponse|RedirectResponse
+     * @return JsonResponse|View
      */
-    public function verifyPricingPlanPayment(string $pricingPlanId, string $transactionId): JsonResponse|RedirectResponse
+    public function verifyPricingPlanPayment(string $pricingPlanId, string $transactionId): JsonResponse|View
     {
         return $this->prepareOutput($this->repository->verifyPricingPlanPayment($pricingPlanId, $transactionId));
     }
