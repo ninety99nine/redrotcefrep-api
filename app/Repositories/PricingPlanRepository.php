@@ -291,7 +291,7 @@ class PricingPlanRepository extends BaseRepository
             if(!$pricingPlan) return ['verified' => false, 'message' => 'This pricing plan does not exist'];
 
         }catch(Exception $e) {
-            
+
             return redirect(config('app.FRONTEND_URI') . '/fail-1');
 
         }
@@ -303,7 +303,7 @@ class PricingPlanRepository extends BaseRepository
             if(!$transaction) return ['verified' => false, 'message' => 'The transaction does not exist'];
 
         }catch(Exception $e) {
-            
+
             return redirect(config('app.FRONTEND_URI') . '/fail-2');
 
         }
@@ -323,9 +323,9 @@ class PricingPlanRepository extends BaseRepository
                 }
 
             }catch(Exception $e) {
-            
+
                 return redirect(config('app.FRONTEND_URI') . '/fail-3');
-    
+
             }
 
             try{
@@ -338,37 +338,124 @@ class PricingPlanRepository extends BaseRepository
                 }
 
             }catch(Exception $e) {
-            
+
                 return redirect(config('app.FRONTEND_URI') . '/fail-4');
-    
+
             }
 
-                if($paymentMethod->isDpo()) {
+            if($paymentMethod->isDpo()) {
 
                     try{
                     $companyToken = config('app.DPO_COMPANY_TOKEN');
                     $transactionToken = $transaction->metadata['dpo_transaction_token'];
 
                 }catch(Exception $e) {
-                
+
                     return redirect(config('app.FRONTEND_URI') . '/fail-5');
-        
+
                 }
                 try{
                     $metadata = DirectPayOnlineService::verifyPayment($companyToken, $transactionToken);
                 }catch(Exception $e) {
-                
+
                     return redirect(config('app.FRONTEND_URI') . '/fail-6');
-        
+
                 }
 
 
+                    if($this->offersSubscription($pricingPlan)) {
+            
+                        try{
+                        $message = 'Subscription created';
+            
+                        /** @var PaymentMethod $paymentMethod */
+                        $paymentMethod = $transaction->paymentMethod;
+            
+                        $offersStoreSubscription = $this->offersStoreSubscription($pricingPlan);
+                    }catch(Exception $e) {
+    
+                        return redirect(config('app.FRONTEND_URI') . '/fail-7-1');
+    
+                    }
+
                 try{
-                    $this->offerPricingPlan($store, $aiAssistant, $pricingPlan, $transaction);
+                        $offersAiAssistantSubscription = $this->offersAiAssistantSubscription($pricingPlan);
+                    }catch(Exception $e) {
+    
+                        return redirect(config('app.FRONTEND_URI') . '/fail-7-2');
+    
+                    }
+            
+                    try{
+                        if($offersStoreSubscription) {
+                            $storeSubscriptionPayload = $this->prepareStoreSubscriptionPayload($pricingPlan, $transaction);
+                            $subscription = $this->getSubscriptionRepository()->shouldReturnModel()->createSubscription($storeSubscriptionPayload, $store);
+            
+                            if($paymentMethod->isOrangeAirtime()) {
+                                $smsMessage = $this->craftStoreSubscriptionPaidMessage($store, $transaction, $subscription);
+                                SendSms::dispatch($smsMessage, $transaction->requestedByUser->mobile_number->formatE164());
+                            }
+                        }
                 }catch(Exception $e) {
-                
-                    return redirect(config('app.FRONTEND_URI') . '/fail-7');
-        
+
+                    return redirect(config('app.FRONTEND_URI') . '/fail-7-3');
+
+                }
+            
+                try{
+                        if($offersAiAssistantSubscription) {
+                            $aiAssistantSubscriptionPayload = $this->prepareAiAssistantSubscriptionPayload($pricingPlan, $transaction);
+                            $subscription = $this->getSubscriptionRepository()->shouldReturnModel()->createSubscription($aiAssistantSubscriptionPayload, $aiAssistant);
+            
+                            if($paymentMethod->isOrangeAirtime()) {
+                                $smsMessage = $this->craftAIAssistantSubscriptionPaidMessage($transaction, $subscription);
+                                SendSms::dispatch($smsMessage, $transaction->requestedByUser->mobile_number->formatE164());
+                            }
+                        }
+            
+
+                }catch(Exception $e) {
+
+                    return redirect(config('app.FRONTEND_URI') . '/fail-7-3');
+
+                }
+            
+                try{
+                    if($this->offersSmsCredits($pricingPlan) || $this->offersEmailCredits($pricingPlan) || $this->offersWhatsappCredits($pricingPlan)) {
+            
+                        if(!isset($message)) $message = 'Credits added';
+                        $prepareStoreQuotaPayload = $this->prepareStoreQuotaPayload($store, $pricingPlan);
+                        $this->getStoreRepository()->authourize()->shouldReturnModel()->updateStoreQuota($store, $prepareStoreQuotaPayload);
+            
+                    }
+                }catch(Exception $e) {
+
+                    return redirect(config('app.FRONTEND_URI') . '/fail-7-4');
+
+                }
+            
+                try{
+                    if($this->offersAiAssistantTopUpCredits($pricingPlan)) {
+            
+                        if(!isset($message)) $message = 'Credits added';
+                        $aiAssistant->update(['remaining_paid_top_up_tokens' => $aiAssistant->ai_assistant_top_up_credits + $pricingPlan->metadata['ai_assistant_top_up_credits']]);
+            
+                    }
+                }catch(Exception $e) {
+
+                    return redirect(config('app.FRONTEND_URI') . '/fail-7-5');
+
+                }
+            
+                try{
+                    return [
+                        'successful' => true,
+                        'message' => $message
+                    ];
+                }catch(Exception $e) {
+
+                    return redirect(config('app.FRONTEND_URI') . '/fail-7-6');
+
                 }
 
                 try{
@@ -379,9 +466,9 @@ class PricingPlanRepository extends BaseRepository
                         'metadata' => array_merge($transaction->metadata, $metadata)
                     ]);
                 }catch(Exception $e) {
-                
+
                     return redirect(config('app.FRONTEND_URI') . '/fail-8');
-        
+
                 }
 
                 }else{
@@ -399,20 +486,21 @@ class PricingPlanRepository extends BaseRepository
                 try{
                 $storeHref = ltrim(parse_url(route('show.store', ['storeId' => $store->id]), PHP_URL_PATH), '/');
             }catch(Exception $e) {
-            
+
                 return redirect(config('app.FRONTEND_URI') . '/fail-9');
-    
+
             }
 
             try{
                 return redirect(config('app.FRONTEND_URI') . '/success');
             }catch(Exception $e) {
-            
+
                 return redirect(config('app.FRONTEND_URI') . '/fail-10');
-    
+
             }
 
             }
+        }
     }
 
     /***********************************************
