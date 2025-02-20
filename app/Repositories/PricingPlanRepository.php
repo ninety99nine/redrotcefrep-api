@@ -364,36 +364,60 @@ class PricingPlanRepository extends BaseRepository
 
 
                     if($this->offersSubscription($pricingPlan)) {
-            
+
                         try{
                         $message = 'Subscription created';
-            
+
                         /** @var PaymentMethod $paymentMethod */
                         $paymentMethod = $transaction->paymentMethod;
-            
+
                         $offersStoreSubscription = $this->offersStoreSubscription($pricingPlan);
                     }catch(Exception $e) {
-    
+
                         return redirect(config('app.FRONTEND_URI') . '/fail-7-1');
-    
+
                     }
 
                 try{
                         $offersAiAssistantSubscription = $this->offersAiAssistantSubscription($pricingPlan);
                     }catch(Exception $e) {
-    
+
                         return redirect(config('app.FRONTEND_URI') . '/fail-7-2');
-    
+
                     }
-            
+
                     try{
                         if($offersStoreSubscription) {
+                            try{
                             $storeSubscriptionPayload = $this->prepareStoreSubscriptionPayload($pricingPlan, $transaction);
+                        }catch(Exception $e) {
+
+                            return redirect(config('app.FRONTEND_URI') . '/fail-7-3-1');
+
+                        }
+                        try{
                             $subscription = $this->getSubscriptionRepository()->shouldReturnModel()->createSubscription($storeSubscriptionPayload, $store);
-            
+                        }catch(Exception $e) {
+
+                            return redirect(config('app.FRONTEND_URI') . '/fail-7-3-2');
+
+                        }
+
                             if($paymentMethod->isOrangeAirtime()) {
+                                try{
                                 $smsMessage = $this->craftStoreSubscriptionPaidMessage($store, $transaction, $subscription);
+                            }catch(Exception $e) {
+
+                                    return redirect(config('app.FRONTEND_URI') . '/fail-7-3-3');
+
+                                }
+                                try{
                                 SendSms::dispatch($smsMessage, $transaction->requestedByUser->mobile_number->formatE164());
+                            }catch(Exception $e) {
+
+                                    return redirect(config('app.FRONTEND_URI') . '/fail-7-3-4');
+
+                                }
                             }
                         }
                 }catch(Exception $e) {
@@ -401,52 +425,52 @@ class PricingPlanRepository extends BaseRepository
                     return redirect(config('app.FRONTEND_URI') . '/fail-7-3');
 
                 }
-            
+
                 try{
                         if($offersAiAssistantSubscription) {
                             $aiAssistantSubscriptionPayload = $this->prepareAiAssistantSubscriptionPayload($pricingPlan, $transaction);
                             $subscription = $this->getSubscriptionRepository()->shouldReturnModel()->createSubscription($aiAssistantSubscriptionPayload, $aiAssistant);
-            
+
                             if($paymentMethod->isOrangeAirtime()) {
                                 $smsMessage = $this->craftAIAssistantSubscriptionPaidMessage($transaction, $subscription);
                                 SendSms::dispatch($smsMessage, $transaction->requestedByUser->mobile_number->formatE164());
                             }
                         }
-            
 
-                }catch(Exception $e) {
 
-                    return redirect(config('app.FRONTEND_URI') . '/fail-7-3');
-
-                }
-            
-                try{
-                    if($this->offersSmsCredits($pricingPlan) || $this->offersEmailCredits($pricingPlan) || $this->offersWhatsappCredits($pricingPlan)) {
-            
-                        if(!isset($message)) $message = 'Credits added';
-                        $prepareStoreQuotaPayload = $this->prepareStoreQuotaPayload($store, $pricingPlan);
-                        $this->getStoreRepository()->authourize()->shouldReturnModel()->updateStoreQuota($store, $prepareStoreQuotaPayload);
-            
-                    }
                 }catch(Exception $e) {
 
                     return redirect(config('app.FRONTEND_URI') . '/fail-7-4');
 
                 }
-            
+
                 try{
-                    if($this->offersAiAssistantTopUpCredits($pricingPlan)) {
-            
+                    if($this->offersSmsCredits($pricingPlan) || $this->offersEmailCredits($pricingPlan) || $this->offersWhatsappCredits($pricingPlan)) {
+
                         if(!isset($message)) $message = 'Credits added';
-                        $aiAssistant->update(['remaining_paid_top_up_tokens' => $aiAssistant->ai_assistant_top_up_credits + $pricingPlan->metadata['ai_assistant_top_up_credits']]);
-            
+                        $prepareStoreQuotaPayload = $this->prepareStoreQuotaPayload($store, $pricingPlan);
+                        $this->getStoreRepository()->authourize()->shouldReturnModel()->updateStoreQuota($store, $prepareStoreQuotaPayload);
+
                     }
                 }catch(Exception $e) {
 
                     return redirect(config('app.FRONTEND_URI') . '/fail-7-5');
 
                 }
-            
+
+                try{
+                    if($this->offersAiAssistantTopUpCredits($pricingPlan)) {
+
+                        if(!isset($message)) $message = 'Credits added';
+                        $aiAssistant->update(['remaining_paid_top_up_tokens' => $aiAssistant->ai_assistant_top_up_credits + $pricingPlan->metadata['ai_assistant_top_up_credits']]);
+
+                    }
+                }catch(Exception $e) {
+
+                    return redirect(config('app.FRONTEND_URI') . '/fail-7-6');
+
+                }
+
                 try{
                     return [
                         'successful' => true,
@@ -454,7 +478,7 @@ class PricingPlanRepository extends BaseRepository
                     ];
                 }catch(Exception $e) {
 
-                    return redirect(config('app.FRONTEND_URI') . '/fail-7-6');
+                    return redirect(config('app.FRONTEND_URI') . '/fail-7-7');
 
                 }
 
