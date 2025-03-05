@@ -65,7 +65,7 @@ class ProductRepository extends BaseRepository
             }
         }
 
-        return $this->applyFiltersOnQuery()->getOrCountResources();
+        return $this->getOutput();
     }
 
     /**
@@ -226,8 +226,8 @@ class ProductRepository extends BaseRepository
                  *
                  *  1) Rank each product by sales velocity.
                  *  2) Products with unlimited or high stock levels have an advantage.
-                 *  3) Do not consider cancelled product lines.
-                 *  4) Do not consider product lines of cancencelled orders.
+                 *  3) Do not consider cancelled order products.
+                 *  4) Do not consider order products of cancencelled orders.
                  *
                  *  Note: Clone query because the query instance is modified.
                  */
@@ -240,12 +240,12 @@ class ProductRepository extends BaseRepository
                 ->selectRaw('
                     (
                         (
-                            SELECT SUM(product_lines.quantity)
-                            FROM product_lines
-                            INNER JOIN carts ON carts.id = product_lines.cart_id
+                            SELECT SUM(order_products.quantity)
+                            FROM order_products
+                            INNER JOIN carts ON carts.id = order_products.cart_id
                             INNER JOIN orders ON orders.cart_id = carts.id
-                            WHERE product_lines.product_id = products.id
-                            AND product_lines.is_cancelled = 0
+                            WHERE order_products.product_id = products.id
+                            AND order_products.is_cancelled = 0
                             AND orders.status != "cancelled"
                         ) /
                         GREATEST(
@@ -253,9 +253,9 @@ class ProductRepository extends BaseRepository
                                 SELECT DATEDIFF(MAX(orders.created_at), MIN(orders.created_at))
                                 FROM orders
                                 INNER JOIN carts ON carts.id = orders.cart_id
-                                INNER JOIN product_lines ON product_lines.cart_id = carts.id
-                                WHERE product_lines.product_id = products.id
-                                AND product_lines.is_cancelled = 0
+                                INNER JOIN order_products ON order_products.cart_id = carts.id
+                                WHERE order_products.product_id = products.id
+                                AND order_products.is_cancelled = 0
                             ),
                             1
                         )
@@ -559,7 +559,7 @@ class ProductRepository extends BaseRepository
             return ['message' => 'This product does not exist'];
         }
 
-        return $this->applyFiltersOnQuery()->getOrCountResources();
+        return $this->getOutput();
     }
 
     /**
@@ -605,7 +605,7 @@ class ProductRepository extends BaseRepository
         }
 
         $this->setQuery($product->variations());
-        return $this->applyFiltersOnQuery()->getOrCountResources();
+        return $this->getOutput();
     }
 
     /***********************************************

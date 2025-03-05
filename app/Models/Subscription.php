@@ -86,7 +86,7 @@ class Subscription extends BaseModel
      */
     public function transaction()
     {
-        return $this->morphOne(Transaction::class, 'owner');
+        return $this->belongsTo(Transaction::class);
     }
 
     /**
@@ -102,11 +102,34 @@ class Subscription extends BaseModel
      ***************************/
 
     protected $appends = [
-        'has_expired'
+        'status', 'statusDescription'
     ];
 
-    public function getHasExpiredAttribute()
+    public function getStatusAttribute()
     {
-        return \Carbon\Carbon::parse($this->end_at)->isBefore(now());
+        if (\Carbon\Carbon::parse($this->end_at)->isPast()) {
+            return 'Expired';
+        }
+
+        if (\Carbon\Carbon::parse($this->start_at)->isFuture()) {
+            return 'Scheduled';
+        }
+
+        return 'Active';
     }
+
+    public function getStatusDescriptionAttribute()
+    {
+        switch ($this->status) {
+            case 'Expired':
+                return 'This subscription has ended';
+            case 'Scheduled':
+                return 'This subscription is scheduled to start on ' . $this->start_at->format('d M Y H:i');
+            case 'Active':
+                return 'This subscription is currently active';
+            default:
+                return 'Unknown status.';
+        }
+    }
+
 }

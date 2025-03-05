@@ -124,16 +124,15 @@ trait BaseTrait
     /**
      *  Prepare the item line for insertion into the database
      *
-     *  @param int $cartId
      *  @param boolean $convertToJson
      */
     public function readyForDatabase($convertToJson = true)
     {
         /**
-         *  Convert the specified item line (product line or coupon) to array.
+         *  Convert the specified item line (order product or Promotion) to array.
          *  This is because we don't want the casting functionality of the
-         *  ProductLine / CouponLine Model e.g To avoid automatic casting
-         *  to array or vice-versa.
+         *  OrderProduct / OrderPromotion Model e.g To avoid automatic
+         *  casting to array or vice-versa.
          */
         $output = $this->toArray();
 
@@ -200,7 +199,7 @@ trait BaseTrait
     /**
      *  Get the current class basename as lowercase words separated by spaces
      *
-     *  e.g ProductLine into product line
+     *  e.g OrderProduct into order product
      */
     public function getResourceName()
     {

@@ -27,7 +27,7 @@ class AiAssistantRepository extends BaseRepository
             $this->setQuery(AiAssistant::query()->latest());
         }
 
-        return $this->applyFiltersOnQuery()->getOrCountResources();
+        return $this->getOutput();
     }
 
     /**

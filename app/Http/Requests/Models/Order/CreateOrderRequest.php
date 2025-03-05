@@ -72,13 +72,6 @@ class CreateOrderRequest extends FormRequest
                 ]);
             }
 
-            //  Make sure that the "cart_coupon_codes" is an array if provided
-            if($this->has('cart_coupon_codes') && is_string($this->request->all()['cart_coupon_codes'])) {
-                $this->merge([
-                    'cart_coupon_codes' => json_decode($this->request->all()['cart_coupon_codes'])
-                ]);
-            }
-
         } catch (\Throwable $th) {
 
         }

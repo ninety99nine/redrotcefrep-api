@@ -33,7 +33,7 @@ class MediaFileRepository extends BaseRepository
             $this->setQuery(MediaFile::query()->latest());
         }
 
-        return $this->applyFiltersOnQuery()->getOrCountResources();
+        return $this->getOutput();
     }
 
     /**

@@ -20,7 +20,7 @@ class Status implements CastsAttributes
      */
     public function get($model, $key, $value, $attributes)
     {
-        //  Get the model resource name e.g product, product line, e.t.c
+        //  Get the model resource name e.g product, order product, e.t.c
         $descriptionName = $model->getResourceName();
 
         switch ($key) {

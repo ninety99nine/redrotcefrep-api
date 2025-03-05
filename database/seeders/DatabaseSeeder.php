@@ -20,10 +20,10 @@ class DatabaseSeeder extends Seeder
 
         $this->truncate(
             'users', 'password_reset_tokens', 'failed_jobs', 'jobs', 'personal_access_tokens', 'stores', 'addresses',
-            'delivery_addresses', 'occasions', 'payment_methods', 'orders', 'carts', 'mobile_verifications',
-            'products', 'variables', 'product_lines', 'coupons', 'coupon_lines', 'transactions',
+            'delivery_addresses', 'occasions', 'payment_methods', 'orders', 'mobile_verifications',
+            'products', 'variables', 'order_products', 'promotions', 'order_promotions', 'transactions',
             'pricing_plans', 'subscriptions', 'reviews', 'friend_groups',
-            'friend_group_store_association',
+            'friend_group_store_association', 'couriers',
             'friend_group_user_association', 'user_order_view_association',
             'user_store_association', 'sms_messages', 'notifications', 'ai_message_categories',
             'ai_assistants', 'ai_messages', 'ai_lessons', 'sms_alerts', 'sms_alert_activities', 'sms_alert_activity_associations',
@@ -38,6 +38,7 @@ class DatabaseSeeder extends Seeder
          *  generate by the other seeders
          */
 
+        $this->call(CourierSeeder::class);
         $this->call(PricingPlanSeeder::class);
         $this->call(PaymentMethodSeeder::class);
         //$this->call(UserSeeder::class);

@@ -9,7 +9,9 @@ Route::controller(OrderController::class)
     ->group(function () {
         Route::get('/', 'showOrders')->name('show.orders');
         Route::post('/', 'createOrder')->name('create.order')->withoutMiddleware('auth:sanctum');
+        Route::put('/', 'updateOrders')->name('update.orders');
         Route::delete('/', 'deleteOrders')->name('delete.orders');
+        Route::post('/download', 'downloadOrders')->name('download.orders');
         Route::get('/status/counts', 'showOrderStatusCounts')->name('show.order.status.counts');
 
         //  Order
@@ -32,7 +34,6 @@ Route::controller(OrderController::class)
             Route::post('/mark-as-unpaid', 'markOrderAsUnpaid')->name('mark.order.as.unpaid');
             Route::get('/mark-as-paid/payment-methods', 'showPaymentMethodsForMarkingAsPaid')->name('show.payment.methods.for.marking.as.paid');
 
-            Route::get('/cart', 'showOrderCart')->name('show.order.cart');
             Route::get('/store', 'showOrderStore')->name('show.order.store');
             Route::get('/customer', 'showOrderCustomer')->name('show.order.customer');
             Route::get('/occasion', 'showOrderOccasion')->name('show.order.occasion');

@@ -41,7 +41,7 @@ class CustomerRepository extends BaseRepository
             }
         }
 
-        return $this->applyFiltersOnQuery()->getOrCountResources();
+        return $this->getOutput();
     }
 
     /**

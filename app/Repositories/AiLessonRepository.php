@@ -25,7 +25,7 @@ class AiLessonRepository extends BaseRepository
             $this->setQuery(AiLesson::latest());
         }
 
-        return $this->applyFiltersOnQuery()->getOrCountResources();
+        return $this->getOutput();
     }
 
     /**

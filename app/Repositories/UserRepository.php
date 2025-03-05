@@ -46,10 +46,10 @@ class UserRepository extends BaseRepository
     {
         if($this->getQuery() == null) {
             if(!$this->isAuthourized()) return ['message' => 'You do not have permission to show users'];
-            $this->setQuery(User::query()->notGuest()->latest());
+            $this->setQuery(User::query()->notGuest()->when(!request()->has('_sort'), fn($query) => $query->latest()));
         }
 
-        return $this->applyFiltersOnQuery()->getOrCountResources();
+        return $this->getOutput();
     }
 
     /**

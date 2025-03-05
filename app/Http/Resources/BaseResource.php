@@ -514,8 +514,7 @@ class BaseResource extends JsonResource
         /**
          *  The $relationship may be a single Eloquent Model or it may
          *  be an Eloquent Collection. The $relationshipName is the
-         *  name of that relationship e.g orders, carts, products,
-         *  e.t.c
+         *  name of that relationship e.g orders, products, e.t.c
          *
          *  Each relationship must be transformed according to its
          *  corresponding model repository class

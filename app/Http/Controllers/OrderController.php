@@ -8,11 +8,15 @@ use App\Repositories\OrderRepository;
 use App\Http\Controllers\Base\BaseController;
 use App\Http\Requests\Models\Order\ShowOrdersRequest;
 use App\Http\Requests\Models\Order\MarkAsPaidRequest;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use App\Http\Requests\Models\Order\UpdateOrderRequest;
 use App\Http\Requests\Models\Order\CreateOrderRequest;
+use App\Http\Requests\Models\Order\UpdateOrdersRequest;
 use App\Http\Requests\Models\Order\DeleteOrdersRequest;
 use App\Http\Requests\Models\Order\UpdateStatusRequest;
+use App\Http\Requests\Models\Order\DownloadOrdersRequest;
 use App\Http\Requests\Models\Order\RequestPaymentRequest;
+use \Symfony\Component\HttpFoundation\BinaryFileResponse;
 use App\Http\Requests\Models\Order\AddOrderFriendGroupRequest;
 use App\Http\Requests\Models\Order\ShowOrderStatusCountsRequest;
 use App\Http\Requests\Models\Order\VerifyOrderCollectionRequest;
@@ -35,9 +39,9 @@ class OrderController extends BaseController
      * Show orders.
      *
      * @param ShowOrdersRequest $request
-     * @return JsonResponse
+     * @return JsonResponse|BinaryFileResponse
      */
-    public function showOrders(ShowOrdersRequest $request): JsonResponse
+    public function showOrders(ShowOrdersRequest $request): JsonResponse|BinaryFileResponse
     {
         if($request->userId) {
             $request->merge(['user_id' => $request->userId]);
@@ -62,6 +66,17 @@ class OrderController extends BaseController
     }
 
     /**
+     * Update orders.
+     *
+     * @param UpdateOrdersRequest $request
+     * @return JsonResponse
+     */
+    public function updateOrders(UpdateOrdersRequest $request): JsonResponse
+    {
+        return $this->prepareOutput($this->repository->updateOrders($request->all()));
+    }
+
+    /**
      * Delete orders.
      *
      * @param DeleteOrdersRequest $request
@@ -70,6 +85,17 @@ class OrderController extends BaseController
     public function deleteOrders(DeleteOrdersRequest $request): JsonResponse
     {
         return $this->prepareOutput($this->repository->deleteOrders($request->all()));
+    }
+
+    /**
+     * Download orders.
+     *
+     * @param DownloadOrdersRequest $request
+     * @return array|StreamedResponse
+     */
+    public function downloadOrders(DownloadOrdersRequest $request): array|StreamedResponse
+    {
+        return $this->prepareOutput($this->repository->downloadOrders($request->all()));
     }
 
     /**
@@ -240,17 +266,6 @@ class OrderController extends BaseController
     public function showPaymentMethodsForMarkingAsPaid(string $orderId): JsonResponse
     {
         return $this->prepareOutput($this->repository->showPaymentMethodsForMarkingAsPaid($orderId));
-    }
-
-    /**
-     * Show order cart.
-     *
-     * @param string $orderId
-     * @return JsonResponse
-     */
-    public function showOrderCart(string $orderId): JsonResponse
-    {
-        return $this->prepareOutput($this->repository->showOrderCart($orderId));
     }
 
     /**

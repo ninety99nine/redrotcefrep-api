@@ -28,7 +28,7 @@ class MobileVerificationRepository extends BaseRepository
             $this->setQuery(MobileVerification::query()->latest());
         }
 
-        return $this->applyFiltersOnQuery()->getOrCountResources();
+        return $this->getOutput();
     }
 
     /**

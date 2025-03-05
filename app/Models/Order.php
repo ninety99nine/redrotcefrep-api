@@ -12,7 +12,6 @@ use App\Traits\OrderTrait;
 use App\Casts\OrderStatus;
 use App\Models\Base\BaseModel;
 use App\Casts\OrderPaymentStatus;
-use App\Casts\OrderCollectionType;
 use App\Services\Ussd\UssdService;
 use App\Casts\E164PhoneNumberCast;
 use App\Enums\OrderCancellationReason;
@@ -67,68 +66,82 @@ class Order extends BaseModel
     const OTHER_CANCELLATION_REASON_MAX_CHARACTERS = 400;
 
     protected $casts = [
-        'cancelled_at' => 'datetime',
+        'subtotal' => Money::class,
+        'fee_total' => Money::class,
+        'vat_amount' => Money::class,
         'paid_total' => Money::class,
+        'free_delivery' => 'boolean',
+        'cancelled_at' => 'datetime',
         'delivery_date' => 'datetime',
         'grand_total' => Money::class,
         'pending_total' => Money::class,
+        'discount_total' => Money::class,
         'collection_verified' => 'boolean',
         'outstanding_total' => Money::class,
+        'applied_promotion_code' => 'boolean',
         'collection_verified_at' => 'datetime',
         'last_viewed_by_team_at' => 'datetime',
         'first_viewed_by_team_at' => 'datetime',
+        'subtotal_after_discount' => Money::class,
         'collection_code_expires_at' => 'datetime',
         'customer_mobile_number' => E164PhoneNumberCast::class,
     ];
 
+
     protected $tranformableCasts = [
         'currency' => Currency::class,
         'status' => OrderStatus::class,
+        'vat_rate' => Percentage::class,
         'paid_percentage' => Percentage::class,
         'collection_verified' => Status::class,
         'pending_percentage' => Percentage::class,
-        'outstanding_percentage' => Percentage::class,
         'payment_status' => OrderPaymentStatus::class,
-        'collection_type' => OrderCollectionType::class
+        'outstanding_percentage' => Percentage::class
     ];
 
     protected $fillable = [
 
-        /* Basic Information */
-        'summary',
+        /* General Information */
+        'summary', 'status', 'currency', 'subtotal', 'discount_total', 'subtotal_after_discount',
+        'vat_method', 'vat_rate', 'vat_amount', 'fee_total', 'grand_total',
 
-        /* Financial Information */
-        'currency','grand_total','paid_total','paid_percentage','pending_total','pending_percentage','outstanding_total','outstanding_percentage',
+        /* Payment Information */
+        'payment_status', 'paid_total', 'paid_percentage', 'pending_total', 'pending_percentage',
+        'outstanding_total', 'outstanding_percentage',
 
-        /* Status Information */
-        'status','payment_status',
+        /* Product Information */
+        'total_products', 'total_cancelled_products', 'total_uncancelled_products',
+        'total_product_quantities', 'total_cancelled_product_quantities',
+        'total_uncancelled_product_quantities',
 
-        /* Notes */
-        'customer_note','store_note',
+        /* Promotion Information */
+        'total_promotions', 'total_cancelled_promotions', 'total_uncancelled_promotions',
+        'applied_promotion_code',
 
-        /* Cancellation Information */
-        'cancellation_reason','other_cancellation_reason','cancelled_at',
-
-        /* Customer Information */
-        'customer_first_name', 'customer_last_name', 'customer_mobile_number', 'customer_email', 'customer_id', 'placed_by_user_id',
-
-        /* Collection Information */
-        'collection_type','delivery_address_id','destination_name',
+        /* Delivery Information */
+        'delivery_method_name', 'delivery_distance_value', 'delivery_distance_unit', 'delivery_distance_text',
+        'delivery_duration_value', 'delivery_duration_text', 'delivery_weight_value', 'delivery_weight_unit',
+        'delivery_weight_text', 'free_delivery', 'delivery_date', 'delivery_timeslot', 'delivery_method_id',
 
         /* Collection Verification */
-        'collection_code','collection_qr_code','collection_code_expires_at','collection_verified','collection_verified_at','collection_verified_by_user_id', 'collection_note',
+        'collection_code', 'collection_qr_code', 'collection_code_expires_at', 'collection_verified',
+        'collection_verified_at', 'collection_verified_by_user_id', 'collection_note',
 
-        /* Delivery */
-        'delivery_date',
+        /* Cancellation Information */
+        'cancellation_reason', 'other_cancellation_reason', 'cancelled_at',
 
-        /* Relationships */
-        'cart_id','store_id','occasion_id','friend_group_id',
+        /* Customer Information */
+        'customer_first_name', 'customer_last_name', 'customer_mobile_number',
+        'customer_email', 'customer_note', 'customer_id', 'placed_by_user_id',
 
         /* Team Views */
-        'total_views_by_team','first_viewed_by_team_at','last_viewed_by_team_at',
+        'total_views_by_team', 'first_viewed_by_team_at', 'last_viewed_by_team_at',
 
-        /* Creator Information */
-        'created_by_user_id',
+        /* Notes */
+        'store_note',
+
+        /* Other Relationships */
+        'assigned_to_user_id', 'created_by_user_id', 'store_id', 'occasion_id', 'friend_group_id',
 
     ];
 
@@ -148,34 +161,72 @@ class Order extends BaseModel
          *  Search: Order number, associated user's first name, last name or mobile number
          */
         return $query->where('id', $searchWordWithoutLeadingZeros)
-                     ->orWhereHas('users', function($query) use ($searchWord) {
+                    ->orWhere('summary', 'like', "%{$searchWord}%")
+                    ->orWhereHas('customer', function($query) use ($searchWord) {
                         $query->search($searchWord);
-                     });
+                    })->orWhereHas('orderProducts', function($query) use ($searchWord) {
+                        $query->search($searchWord);
+                    })->orWhereHas('orderPromotions', function($query) use ($searchWord) {
+                        $query->search($searchWord);
+                    });
     }
 
     /********************
      *  RELATIONSHIPS   *
      *******************/
 
-    public function cart()
+    public function courier()
     {
-        return $this->belongsTo(Cart::class);
+        return $this->belongsTo(Courier::class);
     }
 
-    public function store()
+    public function orderFees()
     {
-        return $this->belongsTo(Store::class);
+        return $this->hasMany(OrderFee::class);
     }
 
-    public function customer()
+    public function orderComments()
     {
-        return $this->belongsTo(Customer::class);
+        return $this->hasMany(OrderComment::class);
     }
 
-    public function occasion()
+    public function orderProducts()
     {
-        return $this->belongsTo(Occasion::class);
+        return $this->hasMany(OrderProduct::class);
     }
+
+    public function orderDiscounts()
+    {
+        return $this->hasMany(OrderDiscount::class);
+    }
+
+    public function orderPromotions()
+    {
+        return $this->hasMany(OrderPromotion::class);
+    }
+
+    public function orderHistory()
+    {
+        return $this->hasMany(OrderHistory::class);
+    }
+
+
+
+
+     public function store()
+     {
+         return $this->belongsTo(Store::class);
+     }
+
+     public function customer()
+     {
+         return $this->belongsTo(Customer::class);
+     }
+
+     public function occasion()
+     {
+         return $this->belongsTo(Occasion::class);
+     }
 
     public function friendGroup()
     {
@@ -195,6 +246,11 @@ class Order extends BaseModel
     public function createdByUser()
     {
         return $this->belongsTo(User::class, 'created_by_user_id');
+    }
+
+    public function assignedToUser()
+    {
+        return $this->belongsTo(User::class, 'assigned_to_user_id');
     }
 
     public function deliveryAddress()

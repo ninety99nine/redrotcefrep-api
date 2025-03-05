@@ -18,12 +18,9 @@ class ShoppingCartController extends BaseController
      */
     public function inspectShoppingCart(InspectShoppingCartRequest $request): JsonResponse
     {
-        //dd($request->validated());
-        //return $this->prepareOutput('Inspect the shoppgin cart');
-
         $storeId = request()->input('store_id');
         $store = Store::find($storeId);
 
-        return $this->prepareOutput((new ShoppingCartService)->startInspection($store));
+        return $this->prepareOutput((new ShoppingCartService)->startInspection($store)->getShoppingCart());
     }
 }

@@ -22,7 +22,7 @@ class AiMessageCategoryRepository extends BaseRepository
     public function showAiMessageCategories(): AiMessageCategoryResources|array
     {
         $this->setQuery(AiMessageCategory::query()->latest());
-        return $this->applyFiltersOnQuery()->getOrCountResources();
+        return $this->getOutput();
     }
 
     /**

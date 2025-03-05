@@ -16,7 +16,7 @@
             <li><strong>Demographic Information:</strong> Country, language, currency preferences, and address details.</li>
             <li><strong>Business and Store Data:</strong> Store name, alias, emoji, contact details, description, and store preferences.</li>
             <li><strong>Transaction Data:</strong> Order details, payment methods, transaction status, amounts, currencies, and subscription details.</li>
-            <li><strong>Usage Data:</strong> Interaction timestamps, AI assistant usage metrics, product, coupon, and cart information.</li>
+            <li><strong>Usage Data:</strong> Interaction timestamps, AI assistant usage metrics, product, promotion, and cart information.</li>
             <li><strong>Media and Content:</strong> Uploaded media files such as file name, path, size, and type.</li>
             <li><strong>Communications Data:</strong> SMS and email content, recipient information, and delivery status.</li>
             <li><strong>Verification Data:</strong> Mobile verification codes.</li>

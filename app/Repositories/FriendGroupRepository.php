@@ -57,7 +57,7 @@ class FriendGroupRepository extends BaseRepository
 
         }
 
-        return $this->applyFiltersOnQuery()->getOrCountResources();
+        return $this->getOutput();
     }
 
     /**

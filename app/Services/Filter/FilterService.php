@@ -2,14 +2,27 @@
 
 namespace App\Services\Filter;
 
+use App\Models\Store;
 use App\Models\Order;
 use App\Models\Address;
-use App\Traits\Base\BaseTrait;
 use App\Enums\FilterResourceType;
 
 class FilterService
 {
-    use BaseTrait;
+    private $store;
+
+    /**
+     * Generate filters for a specific resource.
+     *
+     * @param Store $store
+     * @return self
+     */
+    public function setStore(Store $store): self
+    {
+        $this->store = $store;
+        return $this;
+    }
+
 
     /**
      * Generate filters for a specific resource.
@@ -17,7 +30,7 @@ class FilterService
      * @param FilterResourceType $filterResourceType
      * @return array
      */
-    public static function getFiltersByResourceType(FilterResourceType $filterResourceType): array
+    public function getFiltersByResourceType(FilterResourceType $filterResourceType): array
     {
         switch ($filterResourceType) {
             case FilterResourceType::PAYMENT_METHODS:
@@ -38,8 +51,8 @@ class FilterService
                 return self::getProductFilters();
             case FilterResourceType::REVIEWS:
                 return self::getReviewsFilters();
-            case FilterResourceType::COUPONS:
-                return self::getCouponFilters();
+            case FilterResourceType::PROMOTIONS:
+                return self::getPromotionFilters();
             case FilterResourceType::STORES:
                 return self::getStoreFilters();
             case FilterResourceType::ORDERS:
@@ -48,8 +61,6 @@ class FilterService
                 return self::getMediaFilters();
             case FilterResourceType::USERS:
                 return self::getUserFilters();
-            case FilterResourceType::CARTS:
-                return self::getCartFilters();
             default:
                 return [];
         }
@@ -60,7 +71,7 @@ class FilterService
      *
      * @return array
      */
-    private static function getPaymentMethodFilters(): array
+    private function getPaymentMethodFilters(): array
     {
         return [
             'created_at' => [
@@ -76,14 +87,13 @@ class FilterService
      *
      * @return array
      */
-    private static function getNotificationFilters(): array
+    private function getNotificationFilters(): array
     {
         return [
             'type' => [
                 'label' => 'Type',
-                'type' => 'options',
+                'type' => 'checkboxes',
                 'options' => [
-                    ['label' => 'All', 'value' => 'all'],
                     ['label' => 'Orders', 'value' => 'orders'],
                     ['label' => 'Followers', 'value' => 'followers'],
                     ['label' => 'Invitations', 'value' => 'invitations'],
@@ -92,9 +102,8 @@ class FilterService
             ],
             'status' => [
                 'label' => 'Status',
-                'type' => 'options',
+                'type' => 'checkboxes',
                 'options' => [
-                    ['label' => 'All', 'value' => 'all'],
                     ['label' => 'Read', 'value' => 'read'],
                     ['label' => 'Unread', 'value' => 'unread'],
                 ],
@@ -112,7 +121,7 @@ class FilterService
      *
      * @return array
      */
-    private static function getTransactionFilters(): array
+    private function getTransactionFilters(): array
     {
         return [
             'created_at' => [
@@ -128,7 +137,7 @@ class FilterService
      *
      * @return array
      */
-    private static function getFriendGroupFilters(): array
+    private function getFriendGroupFilters(): array
     {
         return [
             'created_at' => [
@@ -144,14 +153,13 @@ class FilterService
      *
      * @return array
      */
-    private static function getAddressFilters(): array
+    private function getAddressFilters(): array
     {
         return [
             'type' => [
                 'label' => 'Type',
-                'type' => 'options',
+                'type' => 'checkboxes',
                 'options' => array_merge(
-                    [['label' => 'All', 'value' => 'all']],
                     array_map(fn($type) => ['label' => ucfirst($type), 'value' => strtolower($type)], Address::TYPES())
                 ),
             ],
@@ -168,7 +176,7 @@ class FilterService
      *
      * @return array
      */
-    private static function getFriendFilters(): array
+    private function getFriendFilters(): array
     {
         return [
             'created_at' => [
@@ -184,7 +192,7 @@ class FilterService
      *
      * @return array
      */
-    private static function getOccasionFilters(): array
+    private function getOccasionFilters(): array
     {
         return [
             'created_at' => [
@@ -200,7 +208,7 @@ class FilterService
      *
      * @return array
      */
-    private static function getProductFilters(): array
+    private function getProductFilters(): array
     {
         return [
             'created_at' => [
@@ -216,7 +224,7 @@ class FilterService
      *
      * @return array
      */
-    private static function getReviewsFilters(): array
+    private function getReviewsFilters(): array
     {
         return [
             'created_at' => [
@@ -228,11 +236,11 @@ class FilterService
     }
 
     /**
-     * Get filters for coupons.
+     * Get filters for promotions.
      *
      * @return array
      */
-    private static function getCouponFilters(): array
+    private function getPromotionFilters(): array
     {
         return [
             'created_at' => [
@@ -248,7 +256,7 @@ class FilterService
      *
      * @return array
      */
-    private static function getMediaFilters(): array
+    private function getMediaFilters(): array
     {
         return [
             'created_at' => [
@@ -264,14 +272,13 @@ class FilterService
      *
      * @return array
      */
-    private static function getUserFilters(): array
+    private function getUserFilters(): array
     {
         return [
             'role' => [
                 'label' => 'Role',
-                'type' => 'options',
+                'type' => 'checkboxes',
                 'options' => [
-                    ['label' => 'All', 'value' => 'all'],
                     ['label' => 'User', 'value' => 'user'],
                     ['label' => 'Super Admin', 'value' => 'super-admin'],
                 ],
@@ -290,34 +297,17 @@ class FilterService
     }
 
     /**
-     * Get filters for carts.
-     *
-     * @return array
-     */
-    private static function getCartFilters(): array
-    {
-        return [
-            'created_at' => [
-                'label' => 'Created Date',
-                'type' => 'date',
-                'options' => self::getOperatorOptions()
-            ]
-        ];
-    }
-
-    /**
      * Get filters for stores.
      *
      * @return array
      */
-    private static function getStoreFilters(): array
+    private function getStoreFilters(): array
     {
         return [
             'online_status' => [
                 'label' => 'Status',
-                'type' => 'options',
+                'type' => 'checkboxes',
                 'options' => [
-                    ['label' => 'All', 'value' => 'all'],
                     ['label' => 'Online', 'value' => 'online'],
                     ['label' => 'Offline', 'value' => 'offline'],
                 ]
@@ -335,36 +325,139 @@ class FilterService
      *
      * @return array
      */
-    private static function getOrderFilters(): array
+    private function getOrderFilters(): array
     {
-        return [
-            'status' => [
+        $promotions = $this->store ? $this->store->promotions : [];
+        //$paymentMethods = $this->store ? $this->store->paymentMethods : [];
+        $deliveryMethods = $this->store ? $this->store->deliveryMethods : [];
+        $deliveryTimeslots = $this->store ? $this->store->orders()->whereNotNull('delivery_timeslot')->distinct()->pluck('delivery_timeslot')->toArray() : [];
+
+        if(count($deliveryTimeslots)) {
+
+            // Sort the timeslots from earliest to latest
+            usort($deliveryTimeslots, function ($a, $b) {
+
+                [$startA] = explode(" - ", $a);
+                [$startB] = explode(" - ", $b);
+
+                $timeA = strtotime($startA);
+                $timeB = strtotime($startB);
+
+                return $timeA <=> $timeB;
+
+            });
+
+        }
+
+        return collect([
+            [
                 'label' => 'Status',
-                'type' => 'options',
-                'options' => array_merge(
-                    [['label' => 'All', 'value' => 'all']],
-                    array_map(fn($status) => ['label' => $status, 'value' => strtolower($status)], Order::STATUSES())
-                ),
+                'type' => 'checkboxes',
+                'target' => 'status',
+                'priority' => true,
+                'options' => array_map(fn($status) => [
+                    'label' => ucfirst($status),
+                    'value' => strtolower($status)
+                ], Order::STATUSES())
             ],
-            'payment_status' => [
+            [
                 'label' => 'Payment Status',
-                'type' => 'options',
-                'options' => array_merge(
-                    [['label' => 'All', 'value' => 'all']],
-                    array_map(fn($status) => ['label' => $status, 'value' => strtolower($status)], Order::PAYMENT_STATUSES())
-                ),
+                'target' => 'payment_status',
+                'type' => 'checkboxes',
+                'priority' => true,
+                'options' => array_map(fn($status) => [
+                    'label' => ucfirst($status),
+                    'value' => strtolower($status)
+                ], Order::PAYMENT_STATUSES()),
             ],
-            'created_at' => [
-                'label' => 'Created Date',
+            [
+                'target' => 'delivery_method_id',
+                'label' => 'Delivery Methods',
+                'type' => 'checkboxes',
+                'priority' => true,
+                'options' => collect($deliveryMethods)->map(fn($deliveryMethod) => [
+                    'label' => ucfirst($deliveryMethod->name),
+                    'value' => $deliveryMethod->id
+                ])->toArray()
+            ],
+            [
+                'priority' => true,
+                'label' => 'Delivery Date',
+                'target' => 'delivery_date',
                 'type' => 'date',
                 'options' => self::getOperatorOptions()
             ],
-            'grand_total' => [
+            [
+                'target' => 'delivery_timeslot',
+                'label' => 'Delivery Timeslot',
+                'type' => 'checkboxes',
+                'priority' => true,
+                'options' => collect($deliveryTimeslots)->map(fn($deliveryTimeslot) => [
+                    'label' => $deliveryTimeslot,
+                    'value' => $deliveryTimeslot
+                ])->toArray()
+            ],
+            [
+                'label' => 'Promotions',
+                'target' => 'orderPromotions->promotion_id',
+                'type' => 'checkboxes',
+                'priority' => true,
+                'options' => collect($promotions)->map(fn($promotion) => [
+                    'label' => ucfirst($promotion->name),
+                    'value' => $promotion->id
+                ])->toArray()
+            ],
+            [
                 'label' => 'Grand Total',
+                'target' => 'grand_total',
+                'type' => 'money',
+                'priority' => true,
+                'options' => self::getOperatorOptions()
+            ],
+            [
+                'label' => 'Discount Total',
+                'target' => 'discount_total',
                 'type' => 'money',
                 'options' => self::getOperatorOptions()
             ],
-        ];
+            [
+                'label' => 'Paid Total',
+                'target' => 'paid_total',
+                'type' => 'money',
+                'options' => self::getOperatorOptions()
+            ],
+            [
+                'label' => 'Pending Total',
+                'target' => 'pending_total',
+                'type' => 'money',
+                'options' => self::getOperatorOptions()
+            ],
+            [
+                'label' => 'Outstanding Total',
+                'target' => 'outstanding_total',
+                'type' => 'money',
+                'options' => self::getOperatorOptions()
+            ],
+            [
+                'label' => 'Total Unit Products',
+                'target' => 'total_products',
+                'type' => 'number',
+                'options' => self::getOperatorOptions()
+            ],
+            [
+                'label' => 'Total Product Units',
+                'target' => 'total_product_quantities',
+                'type' => 'number',
+                'options' => self::getOperatorOptions()
+            ],
+            [
+                'priority' => true,
+                'label' => 'Created Date',
+                'target' => 'created_at',
+                'type' => 'date',
+                'options' => self::getOperatorOptions()
+            ],
+        ])->filter(fn($filter) => count($filter['options']))->toArray();
     }
 
     /**
@@ -372,7 +465,7 @@ class FilterService
      *
      * @return array
      */
-    private static function getOperatorOptions(): array
+    private function getOperatorOptions(): array
     {
         return [
             ['label' => 'Greater or Equal to', 'value' => 'gte'],

@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\StoreController;
 use App\Http\Controllers\OrderController;
-use App\Http\Controllers\CouponController;
+use App\Http\Controllers\PromotionController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\CustomerController;
@@ -126,9 +126,9 @@ Route::controller(StoreController::class)
 
         });
 
-        //  Coupons
-        Route::controller(CouponController::class)->prefix('coupons')->group(function () {
-            Route::get('/', 'showCoupons')->name('show.store.coupons');
+        //  Promotions
+        Route::controller(PromotionController::class)->prefix('promotions')->group(function () {
+            Route::get('/', 'showPromotions')->name('show.store.promotions');
         });
 
         //  Reviews

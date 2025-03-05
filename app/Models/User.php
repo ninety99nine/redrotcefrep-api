@@ -182,6 +182,11 @@ class User extends BaseAuthenticatable /* Authenticatable */
         return $this->belongsTo(User::class, 'created_by_user_id');
     }
 
+    public function assignedOrders()
+    {
+        return $this->belongsTo(User::class, 'assigned_to_user_id');
+    }
+
     public function reviews()
     {
         return $this->hasMany(Review::class);

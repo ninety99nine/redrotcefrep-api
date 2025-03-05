@@ -16,6 +16,24 @@ use App\Http\Controllers\Auth\SocialAuthController;
 |
 */
 
+Route::get('/test-invoice', function () {
+    $store = \App\Models\Store::with(['logo'])->first();
+    $store = json_decode(json_encode($store), true);
+
+    $orders = \App\Models\Order::with(['orderProducts', 'orderPromotions'])->get();
+    $orders = $orders->map(function ($order) {
+        return json_decode(json_encode($order), true); // Convert objects to arrays
+    })->toArray();
+
+    // Generate the PDF
+    $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdfs.order.invoice', compact('store', 'orders'));
+
+    return response()->streamDownload(function () use ($pdf) {
+        echo $pdf->stream();
+    }, 'name.pdf');
+
+});
+
 //  Social Sign-in
 Route::controller(SocialAuthController::class)
 ->prefix('auth')

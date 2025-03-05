@@ -7,6 +7,8 @@ use Illuminate\Http\Response;
 use App\Traits\Base\BaseTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+use \Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class BaseController extends Controller
 {
@@ -19,13 +21,21 @@ class BaseController extends Controller
      * @param string $status
      * @return JsonResponse|view
      */
-    protected function prepareOutput($output, string $status = Response::HTTP_OK): JsonResponse|View|RedirectResponse
+    protected function prepareOutput($output, string $status = Response::HTTP_OK): JsonResponse|View|RedirectResponse|StreamedResponse|BinaryFileResponse
     {
         if ($output instanceof View) {
             return $output;
         }
 
         if ($output instanceof RedirectResponse) {
+            return $output;
+        }
+
+        if ($output instanceof StreamedResponse) {
+            return $output;
+        }
+
+        if ($output instanceof BinaryFileResponse) {
             return $output;
         }
 

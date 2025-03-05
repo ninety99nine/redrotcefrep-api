@@ -2,13 +2,13 @@
 
 namespace App\Http\Requests\Models\ShoppingCart;
 
-use App\Enums\DeliveryMethodScheduleType;
 use App\Models\Store;
 use App\Models\Customer;
 use App\Traits\AuthTrait;
 use Illuminate\Validation\Rule;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Foundation\Http\FormRequest;
+use App\Enums\DeliveryMethodScheduleType;
 
 class InspectShoppingCartRequest extends FormRequest
 {
@@ -61,7 +61,7 @@ class InspectShoppingCartRequest extends FormRequest
             'cart_products.*' => ['required', 'array'],
             'cart_products.*.id' => ['required', 'uuid'],
             'cart_products.*.quantity' => ['required', 'numeric', 'min:1'],
-            'cart_coupon_code' => ['bail', 'nullable', 'string'],
+            'cart_promotion_code' => ['bail', 'nullable', 'string'],
             'tip_flat_rate' => ['bail', 'nullable', 'min:0', 'numeric', 'regex:/^\d+(\.\d{1,2})?$/'],
             'tip_percentage_rate' => ['bail', 'nullable', 'min:0', 'max:100', 'numeric'],
             'delivery_method_id' => ['uuid', Rule::exists('delivery_methods', 'id')->where(function (Builder $query) {
@@ -175,21 +175,21 @@ class InspectShoppingCartRequest extends FormRequest
     public function attributes()
     {
         return [
+            'guest_id' => 'guest ID',
+            'delivery_method_id' => 'delivery method',
+            'cart_promotion_code' => 'cart promotion code',
+
             'customer.email' => 'email',
             'customer.birthday' => 'birthday',
             'customer.last_name' => 'last name',
             'customer.first_name' => 'first name',
             'customer.mobile_number' => 'mobile number',
 
-
-
-            'guest_id' => 'guest ID',
             'cart_products' => 'cart products',
             'cart_products.*' => 'cart products',
             'cart_products.*.id' => 'cart product id',
             'cart_products.*.quantity' => 'cart product quantity',
-            'cart_coupon_code' => 'cart coupon code',
-            'delivery_method_id' => 'delivery method',
+
         ];
     }
 }

@@ -25,7 +25,7 @@ class AiAssistantTokenUsageRepository extends BaseRepository
             $this->setQuery(AiAssistantTokenUsage::query()->latest());
         }
 
-        return $this->applyFiltersOnQuery()->getOrCountResources();
+        return $this->getOutput();
     }
 
     /**

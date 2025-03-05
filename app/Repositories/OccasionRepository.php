@@ -22,7 +22,7 @@ class OccasionRepository extends BaseRepository
     public function showOccasions(): OccasionResources|array
     {
         $this->setQuery(Occasion::query()->latest());
-        return $this->applyFiltersOnQuery()->getOrCountResources();
+        return $this->getOutput();
     }
 
     /**

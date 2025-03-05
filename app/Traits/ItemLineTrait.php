@@ -2,7 +2,6 @@
 
 namespace App\Traits;
 
-use App\Models\ProductLine;
 use App\Traits\Base\BaseTrait;
 
 trait ItemLineTrait

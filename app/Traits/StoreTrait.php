@@ -2,16 +2,8 @@
 
 namespace App\Traits;
 
-use App\Models\Cart;
-use App\Models\Order;
-use App\Models\PaymentMethod;
-use App\Models\ProductLine;
-use App\Models\Store;
-use App\Models\Transaction;
 use App\Models\User;
-use App\Services\Ussd\UssdService;
 use App\Traits\Base\BaseTrait;
-use Carbon\Carbon;
 
 trait StoreTrait
 {

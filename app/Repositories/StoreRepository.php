@@ -85,7 +85,7 @@ class StoreRepository extends BaseRepository
 
         }
 
-        return $this->applyFiltersOnQuery()->getOrCountResources();
+        return $this->getOutput();
     }
 
     /**
@@ -878,7 +878,7 @@ class StoreRepository extends BaseRepository
 
                 if (empty($categories) || in_array('products', $categories)) {
 
-                    $productsBySales = DB::table('product_lines')
+                    $productsBySales = DB::table('order_products')
                         ->selectRaw("
                             product_id,
                             products.name as product_name,
@@ -886,11 +886,11 @@ class StoreRepository extends BaseRepository
                             SUM(grand_total) as total_revenue,
                             SUM(CASE WHEN is_cancelled = 1 THEN quantity ELSE 0 END) as cancelled_quantity,
                             SUM(CASE WHEN is_cancelled = 1 THEN grand_total ELSE 0 END) as cancelled_revenue,
-                            SUM(product_lines.unit_sale_discount) as total_discount
+                            SUM(order_products.unit_sale_discount) as total_discount
                         ")
-                        ->join('products', 'product_lines.product_id', '=', 'products.id')
-                        ->where('product_lines.store_id', $store->id)
-                        ->whereBetween('product_lines.created_at', [$dateRange1, $dateRange2])
+                        ->join('products', 'order_products.product_id', '=', 'products.id')
+                        ->where('order_products.store_id', $store->id)
+                        ->whereBetween('order_products.created_at', [$dateRange1, $dateRange2])
                         ->groupBy('product_id')
                         ->orderBy('total_revenue', 'desc')
                         ->orderBy('total_quantity', 'desc')

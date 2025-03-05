@@ -3,7 +3,6 @@
 namespace App\Repositories;
 
 use Carbon\Carbon;
-use App\Models\Cart;
 use App\Models\User;
 use App\Models\Store;
 use App\Models\Order;
@@ -15,12 +14,14 @@ use App\Traits\AuthTrait;
 use App\Enums\Association;
 use App\Enums\OrderStatus;
 use App\Models\Transaction;
-use App\Models\ProductLine;
+use App\Models\OrderProduct;
 use App\Models\PaymentMethod;
 use App\Traits\Base\BaseTrait;
 use App\Models\DeliveryAddress;
+use Barryvdh\DomPDF\Facade\Pdf;
 use App\Services\AWS\AWSService;
 use App\Enums\OrderPaymentStatus;
+use Illuminate\Support\Facades\DB;
 use App\Models\MobileVerification;
 use App\Traits\MessageCrafterTrait;
 use App\Enums\PaymentMethodCategory;
@@ -44,9 +45,10 @@ use App\Services\PhoneNumber\PhoneNumberService;
 use App\Notifications\Orders\OrderPaymentRequest;
 use App\Services\CodeGenerator\CodeGeneratorService;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use App\Services\Billing\OrangeMoney\OrangeMoneyService;
+use \Symfony\Component\HttpFoundation\BinaryFileResponse;
 use App\Services\Billing\DirectPayOnline\DirectPayOnlineService;
-use Illuminate\Support\Facades\DB;
 
 class OrderRepository extends BaseRepository
 {
@@ -56,9 +58,9 @@ class OrderRepository extends BaseRepository
      * Show orders.
      *
      * @param array $data
-     * @return OrderResources|array
+     * @return array|BinaryFileResponse|OrderResources
      */
-    public function showOrders(array $data = []): OrderResources|array
+    public function showOrders(array $data = []): array|BinaryFileResponse|OrderResources
     {
         if($this->getQuery() == null) {
 
@@ -67,20 +69,26 @@ class OrderRepository extends BaseRepository
             $customerId = isset($data['customer_id']) ? $data['customer_id'] : null;
             $placedByUserId = isset($data['placed_by_user_id']) ? $data['placed_by_user_id'] : null;
             $createdByUserId = isset($data['created_by_user_id']) ? $data['created_by_user_id'] : null;
+            $assignedToUserId = isset($data['assigned_to_user_id']) ? $data['assigned_to_user_id'] : null;
+
             $association = isset($data['association']) ? Association::tryFrom($data['association']) : null;
 
             if($association == Association::SUPER_ADMIN) {
+
                 if(!$this->isAuthourized()) return ['message' => 'You do not have permission to show orders'];
-                $this->setQuery(Order::latest());
+                $this->setQuery(Order::query()->when(!request()->has('_sort'), fn($query) => $query->latest()));
+
             }else if($storeId) {
+
                 $store = Store::find($storeId);
                 if($store) {
                     $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreTeamMember($store);
                     if(!$isAuthourized) return ['message' => 'You do not have permission to show orders'];
-                    $this->setQuery($store->orders()->latest());
+                    $this->setQuery($store->orders()->when(!request()->has('_sort'), fn($query) => $query->latest()));
                 }else{
                     return ['message' => 'This store does not exist'];
                 }
+
             }else if($customerId) {
                 $customer = Customer::with(['store'])->find($customerId);
                 if($customer) {
@@ -88,7 +96,7 @@ class OrderRepository extends BaseRepository
                     if($store) {
                         $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreTeamMember($store);
                         if(!$isAuthourized) return ['message' => 'You do not have permission to show orders'];
-                        $this->setQuery($customer->orders()->latest());
+                        $this->setQuery($customer->orders()->when(!request()->has('_sort'), fn($query) => $query->latest()));
                     }else{
                         return ['message' => 'This store does not exist'];
                     }
@@ -97,7 +105,7 @@ class OrderRepository extends BaseRepository
                 }
             }else{
 
-                $specifiedUserId = $userId ?? $placedByUserId ?? $createdByUserId;
+                $specifiedUserId = $userId ?? $placedByUserId ?? $createdByUserId ?? $assignedToUserId;
                 $user = in_array($specifiedUserId, [request()->current_user->id, null]) ? request()->current_user : User::find($specifiedUserId);
 
                 if($user) {
@@ -110,17 +118,20 @@ class OrderRepository extends BaseRepository
                 if($association == Association::TEAM_MEMBER) {
                     $this->setQuery(Order::whereHas('store.teamMembersWhoJoined', function ($query) use ($user) {
                         $query->where('user_store_association.user_id', $user->id);
-                    }));
+                    })->when(!request()->has('_sort'), fn($query) => $query->latest()));
                 }else if($createdByUserId) {
-                    $this->setQuery($user->createdOrders()->latest());
+                    $this->setQuery($user->createdOrders()->when(!request()->has('_sort'), fn($query) => $query->latest()));
+                }else if($assignedToUserId) {
+                    $this->setQuery($user->assignedOrders()->when(!request()->has('_sort'), fn($query) => $query->latest()));
                 }else{
-                    $this->setQuery($user->placedOrders()->latest());
+                    $this->setQuery($user->placedOrders()->when(!request()->has('_sort'), fn($query) => $query->latest()));
                 }
+
             }
 
         }
 
-        return $this->applyFiltersOnQuery()->getOrCountResources();
+        return $this->getOutput();
     }
 
     /**
@@ -134,36 +145,71 @@ class OrderRepository extends BaseRepository
         $storeId = $data['store_id'];
         $store = Store::find($storeId);
 
-        return $this->showCreatedResource(Order::first());
+        $shoppingCartInstance = $this->getShoppingCartService()->startInspection($store);
+        $inspectedShoppingCart = $shoppingCartInstance->getShoppingCart();
 
-        $inspectedShoppingCart = $this->getShoppingCartService()->startInspection($store);
-        if($inspectedShoppingCart->total_products == 0) return ['created' => false, 'message' => 'The shopping cart does not have products to place an order'];
+        $totalOrderProducts = $inspectedShoppingCart['totals_summary']['order_products']['total_products'];
+        if($totalOrderProducts == 0) return ['created' => false, 'message' => 'The shopping cart does not have products to place an order'];
 
-        $cart = $this->createOrderCart($inspectedShoppingCart);
         $customer = isset($data['customer']) ? $this->updateOrCreateCustomer($store, $data['customer']) : null;
+        $uncreatedOrder = (new Order)->setRelations(['store' => $store, 'customer' => $customer]);
+        $orderPayload = $this->prepareOrderPayload($uncreatedOrder, $data, $inspectedShoppingCart);
 
-        $order = (new Order)->setRelations(['store' => $store, 'cart' => $cart, 'customer' => $customer]);
-        $orderPayload = $this->prepareOrderPayload($order, $data);
         $order = Order::create($orderPayload);
+        $orderProducts = $this->syncOrderProducts($order, $inspectedShoppingCart);
+        $orderPromotions = $this->syncOrderPromotions($order, $inspectedShoppingCart);
+        $this->addOrderHistoryComment($order, 'Order created on '.Carbon::parse($order->created_at)->format('d M Y @ H:i'));
+        $order->setRelations(['store' => $store, 'customer' => $customer, 'orderProducts' => $orderProducts, 'orderPromotions' => $orderPromotions]);
 
-        $deliveryAddress = $this->addDeliveryAddress($order, $data);
-
-        $order->setRelations(['customer' => $customer]);
         $this->updateCustomerStatistics($order);
-
-        if($customer && isset($deliveryAddress)) $this->createCustomerAddress($customer, $deliveryAddress);
-        $order->setRelations(['store' => $store, 'cart' => $cart->load(['productLines', 'couponLines'])]);
+        $deliveryAddress = $this->addDeliveryAddress($order, $data);
+        if($customer && $deliveryAddress) $this->createCustomerAddress($customer, $deliveryAddress);
 
         $this->generateOrderSummary($order);
-        $this->sendOrderCreatedNotifications($order);
-        $this->getShoppingCartService()->forgetCache();
+        //  $this->sendOrderCreatedNotifications($order);
+        $shoppingCartInstance->forgetCache($store);
 
         if(!$this->checkIfHasRelationOnRequest('customer')) $order->unsetRelation('customer');
         if(!$this->checkIfHasRelationOnRequest('occasion')) $order->unsetRelation('occasion');
         if(!$this->checkIfHasRelationOnRequest('store')) $order->unsetRelation('store');
-        if(!$this->checkIfHasRelationOnRequest('cart')) $order->unsetRelation('cart');
 
         return $this->showCreatedResource($order);
+    }
+
+    /**
+     * Update orders.
+     *
+     * @param array $data
+     * @return array
+     */
+    public function updateOrders(array $data): array
+    {
+        $storeId = $data['store_id'] ?? null;
+
+        if(is_null($storeId)) {
+            if(!$this->isAuthourized()) return ['updated' => false, 'message' => 'You do not have permission to update orders'];
+            $this->setQuery(Order::query());
+        }else{
+
+            $store = Store::find($storeId);
+
+            if($store) {
+                $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+                if(!$isAuthourized) return ['updated' => false, 'message' => 'You do not have permission to update orders'];
+                $this->setQuery($store->orders());
+            }else{
+                return ['updated' => false, 'message' => 'This store does not exist'];
+            }
+
+        }
+
+        $orderIds = $data['order_ids'];
+        $totalOrders = count($orderIds);
+        $fillableFields = (new Order())->getFillable();
+        $fillableData = array_intersect_key($data, array_flip($fillableFields));
+
+        $this->queryOrdersByIds($orderIds)->update($fillableData);
+        return ['updated' => true, 'message' => $totalOrders . ($totalOrders == 1 ? ' order': ' orders') . ' updated'];
     }
 
     /**
@@ -174,7 +220,7 @@ class OrderRepository extends BaseRepository
      */
     public function deleteOrders(array $data): array
     {
-        $storeId = $data['store_id'];
+        $storeId = $data['store_id'] ?? null;
 
         if(is_null($storeId)) {
             if(!$this->isAuthourized()) return ['deleted' => false, 'message' => 'You do not have permission to delete orders'];
@@ -206,6 +252,56 @@ class OrderRepository extends BaseRepository
 
         }else{
             return ['deleted' => false, 'message' => 'No orders deleted'];
+        }
+    }
+
+    /**
+     * Downlaod orders.
+     *
+     * @param array $data
+     * @return array|StreamedResponse
+     */
+    public function downloadOrders(array $data): array|StreamedResponse
+    {
+        $storeId = $data['store_id'] ?? null;
+
+        if(is_null($storeId)) {
+            if(!$this->isAuthourized()) return ['downloaded' => false, 'message' => 'You do not have permission to download orders'];
+            $this->setQuery(Order::query());
+        }else{
+
+            $store = Store::with(['logo'])->find($storeId);
+
+            if($store) {
+                $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+                if(!$isAuthourized) return ['downloaded' => false, 'message' => 'You do not have permission to download orders'];
+                $this->setQuery($store->orders());
+            }else{
+                return ['downloaded' => false, 'message' => 'This store does not exist'];
+            }
+
+        }
+
+        $orderIds = $data['order_ids'];
+        $orders = $this->queryOrdersByIds($orderIds)->with(['orderProducts', 'orderPromotions'])->get();
+
+        if($totalOrders = $orders->count()) {
+
+            // Convert objects to arrays
+            $store = json_decode(json_encode($store), true);
+            $orders = $orders->map(function ($order) {
+                return json_decode(json_encode($order), true);
+            })->toArray();
+
+            // Generate the PDF
+            $pdf = Pdf::loadView('pdfs.order.invoice', compact('store', 'orders'));
+
+            return response()->streamDownload(function () use ($pdf) {
+                echo $pdf->stream();
+            }, 'name.pdf');
+
+        }else{
+            return ['downloaded' => false, 'message' => 'No orders to download'];
         }
     }
 
@@ -329,7 +425,7 @@ class OrderRepository extends BaseRepository
 
             $cart = $oldOrder->cart;
 
-            if(isset($data['cart_products']) || isset($data['cart_coupon_codes'])) {
+            if(isset($data['cart_products']) || isset($data['cart_promotion_code'])) {
                 $inspectedShoppingCart = $this->getShoppingCartService()->startInspection($store);
                 if($inspectedShoppingCart->total_products == 0) return ['updated' => false, 'message' => 'The shopping cart does not have products to update this order'];
 
@@ -339,7 +435,7 @@ class OrderRepository extends BaseRepository
             $customer = isset($data['customer']) ? $this->updateOrCreateCustomer($store, $data['customer']) : $oldOrder->customer;
 
             $order = (new Order)->setRelations(['store' => $store, 'cart' => $cart, 'customer' => $customer]);
-            $orderPayload = $this->prepareOrderPayload($order, $data);
+            $orderPayload = $this->prepareOrderPayload($order, $data, $inspectedShoppingCart);
             $order = tap(clone $oldOrder)->update($orderPayload);
 
             $deliveryAddress = $this->addOrUpdateDeliveryAddress($order, $data);
@@ -348,10 +444,10 @@ class OrderRepository extends BaseRepository
             $this->updateCustomerStatistics($order, $oldOrder);
 
             if($customer && isset($deliveryAddress)) $this->createCustomerAddress($customer, $deliveryAddress);
-            $order->setRelations(['store' => $store, 'cart' => $cart->load(['productLines', 'couponLines'])]);
+            $order->setRelations(['store' => $store, 'cart' => $cart->load(['orderProducts', 'orderPromotions'])]);
 
             $this->generateOrderSummary($order);
-            $this->sendOrderCreatedNotifications($order);
+            //  $this->sendOrderCreatedNotifications($order);
             if(isset($inspectedShoppingCart)) $this->getShoppingCartService()->forgetCache();
 
             if(!$this->checkIfHasRelationOnRequest('customer')) $order->unsetRelation('customer');
@@ -1409,13 +1505,14 @@ class OrderRepository extends BaseRepository
      *
      * @param Order $order
      * @param array $data
+     * @param array $inspectedShoppingCart
      * @return array
      */
-    private function prepareOrderPayload(Order $order, array $data): array
+    private function prepareOrderPayload(Order $order, array $data, array $inspectedShoppingCart): array
     {
-        $cart = $order->cart;
         $store = $order->store;
         $customer = $order->customer;
+        $isc = $inspectedShoppingCart;
         $uncreatedOrder = $order->id == null;
         $customerFirstName = $customerLastName = $customerMobileNumber = $customerEmail = null;
 
@@ -1436,41 +1533,146 @@ class OrderRepository extends BaseRepository
         }
 
         $createdByUserId = ($uncreatedOrder && isset($data['created_by_team']) && $this->isTruthy($data['created_by_team']) && $this->hasAuthUser() && $this->getStoreRepository()->checkIfAssociatedAsStoreTeamMember($store)) ? $this->getAuthUser()->id : $order->created_by_user_id;
-        $placedByUserId = $uncreatedOrder && $createdByUserId == null ? $this->getAuthUser()?->id : $order->placed_by_user_id;
+        $placedByUserId = $createdByUserId ? $createdByUserId : ($order->placed_by_user_id ?? $this->getAuthUser()?->id);
         $occasionId = isset($data['occasion_id']) ? $data['occasion_id'] : $order?->occasion_id;
 
         return [
-            'cart_id' => $cart->id,
-            'store_id' => $store->id,
-            'occasion_id' => $occasionId,
+            'summary' => null,
             'currency' => $store->currency,
+            'status' => OrderStatus::WAITING->value,
+            'subtotal' => $isc['totals']['subtotal']->amount,
+            'discount_total' => $isc['totals']['discount_total']->amount,
+            'subtotal_after_discount' => $isc['totals']['subtotal_after_discount']->amount,
+            'vat_method' => $isc['totals']['vat']['method'],
+            'vat_rate' => $isc['totals']['vat']['rate']['value'],
+            'vat_amount' => $isc['totals']['vat']['amount']->amount,
+            'fee_total' => $isc['totals']['fee_total']->amount,
+            'grand_total' => $isc['totals']['grand_total']->amount,
+
+            'payment_status' => OrderPaymentStatus::UNPAID->value,
+            'paid_total' => 0,
+            'paid_percentage' => 0,
+            'pending_total' => 0,
+            'pending_percentage' => 0,
+            'outstanding_total' => $isc['totals']['grand_total']->amount,
+            'outstanding_percentage' => 100,
+
+            'total_products' => $isc['totals_summary']['order_products']['total_products'],
+            'total_cancelled_products' => $isc['totals_summary']['order_products']['total_cancelled_products'],
+            'total_uncancelled_products' => $isc['totals_summary']['order_products']['total_uncancelled_products'],
+            'total_product_quantities' => $isc['totals_summary']['order_products']['total_product_quantities'],
+            'total_cancelled_product_quantities' => $isc['totals_summary']['order_products']['total_cancelled_product_quantities'],
+            'total_uncancelled_product_quantities' => $isc['totals_summary']['order_products']['total_uncancelled_product_quantities'],
+
+            'total_promotions' => $isc['totals_summary']['order_promotions']['total_promotions'],
+            'total_cancelled_promotions' => $isc['totals_summary']['order_promotions']['total_cancelled_promotions'],
+            'total_uncancelled_promotions' => $isc['totals_summary']['order_promotions']['total_uncancelled_promotions'],
+            'applied_promotion_code' => isset($isc['promotion_code']['applied']) && $isc['promotion_code']['applied'] == true,
+
+            'delivery_method_id' =>  is_null($isc['delivery']['method']) ? null : $isc['delivery']['method']['id'],
+            'delivery_method_name' =>  is_null($isc['delivery']['method']) ? null : $isc['delivery']['method']['name'],
+
+            'delivery_distance_value' => is_null($isc['delivery']['distance']) ? null : $isc['delivery']['distance']['value'],
+            'delivery_distance_unit' => is_null($isc['delivery']['distance']) ? null : $isc['delivery']['distance']['unit'],
+            'delivery_distance_text' => is_null($isc['delivery']['distance']) ? null : $isc['delivery']['distance']['text'],
+
+            'delivery_duration_value' => is_null($isc['delivery']['duration']) ? null : $isc['delivery']['duration']['value'],
+            'delivery_duration_text' => is_null($isc['delivery']['duration']) ? null : $isc['delivery']['duration']['text'],
+
+            'delivery_weight_value' => is_null($isc['delivery']['weight']) ? null : $isc['delivery']['weight']['value'],
+            'delivery_weight_unit' => is_null($isc['delivery']['weight']) ? null : $isc['delivery']['weight']['unit'],
+            'delivery_weight_text' => is_null($isc['delivery']['weight']) ? null : $isc['delivery']['weight']['text'],
+
+            'free_delivery' =>  $isc['delivery']['free_delivery'],
+
+            'delivery_date' => $isc['delivery']['date'],
+            'delivery_timeslot' => $isc['delivery']['timeslot'],
+
+            'collection_code' => null,
+            'collection_qr_code' => null,
+            'collection_code_expires_at' => null,
+            'collection_verified' => false,
+            'collection_verified_at' => null,
+            'collection_verified_by_user_id' => null,
+            'collection_note' => null,
+
+            'cancelled_at' => null,
+            'cancellation_reason' => null,
+            'other_cancellation_reason' => null,
+
             'customer_id' => $customer?->id,
             'customer_email' => $customerEmail,
-            'grand_total' => $cart->grand_total,
-            'placed_by_user_id' => $placedByUserId,
-            'created_by_user_id' => $createdByUserId,
             'customer_last_name' => $customerLastName,
-            'outstanding_total' => $cart->grand_total,
             'customer_first_name' => $customerFirstName,
-            'store_note' => $data['store_note'] ?? null,
             'customer_mobile_number' => $customerMobileNumber,
             'customer_note' => $data['customer_note'] ?? null,
+
+            'total_views_by_team' => 0,
+            'first_viewed_by_team_at' => null,
+            'last_viewed_by_team_at' => null,
+
+            'placed_by_user_id' => $placedByUserId,
+            'created_by_user_id' => $createdByUserId,
+
+            'store_note' => $data['store_note'] ?? null,
+
+            'store_id' => $store->id,
+            'occasion_id' => $occasionId,
             'friend_group_id' => $this->getFriendGroupId($data),
-            'payment_status' => OrderPaymentStatus::UNPAID->value,
-            'collection_type' => $data['collection_type'] ?? null,
-            'destination_name' => $this->getDestinationName($data),
         ];
     }
 
     /**
-     * Get destination name.
+     * Sync order products.
      *
-     * @param array $data
-     * @return string|null
+     * @param Order $order
+     * @param array $inspectedShoppingCart
+     * @return Collection
      */
-    private function getDestinationName(array $data): ?string
+    public function syncOrderProducts(Order $order, array $inspectedShoppingCart): Collection
     {
-        return $data['delivery_destination_name'] ?? $data['pickup_destination_name'] ?? null;
+        $inserts = collect($inspectedShoppingCart['order_products'])->map(function($orderProduct) use ($order) {
+            if(empty($orderProduct['detected_changes'])) $orderProduct['detected_changes'] = null;
+            $orderProduct['store_id'] = $order->store_id;
+            $orderProduct['order_id'] = $order->id;
+            return $orderProduct;
+        });
+
+        return $order->orderProducts()->createMany($inserts);
+    }
+
+    /**
+     * Sync order promotions.
+     *
+     * @param Order $order
+     * @param array $inspectedShoppingCart
+     * @return Collection
+     */
+    public function syncOrderPromotions(Order $order, array $inspectedShoppingCart): Collection
+    {
+        $inserts = collect($inspectedShoppingCart['order_promotions'])->map(function($orderPromotion) use ($order) {
+            if(empty($orderPromotion['detected_changes'])) $orderPromotion['detected_changes'] = null;
+            $orderPromotion['store_id'] = $order->store_id;
+            $orderPromotion['order_id'] = $order->id;
+            return $orderPromotion;
+        });
+
+        return $order->orderPromotions()->createMany($inserts);
+    }
+
+    /**
+     * Add order history comment.
+     *
+     * @param Order $order
+     * @param string $comment
+     * @return void
+     */
+    public function addOrderHistoryComment(Order $order, string $comment): void
+    {
+        $order->orderHistory()->create([
+            'comment' => $comment,
+            'store_id' => $order->store_id
+        ]);
     }
 
     /**
@@ -1550,6 +1752,7 @@ class OrderRepository extends BaseRepository
     {
         $hasEmail = isset($data['email']);
         $hasMobileNumber = isset($data['mobile_number']);
+
 
         if($hasEmail || $hasMobileNumber) {
             $data = array_merge($data, ['currency' => $store->currency]);
@@ -1704,31 +1907,6 @@ class OrderRepository extends BaseRepository
     }
 
     /**
-     * Create order cart.
-     *
-     * @param Cart $inspectedShoppingCart
-     * @return Cart
-     */
-    private function createOrderCart(Cart $inspectedShoppingCart): Cart
-    {
-        $cartPayload = $inspectedShoppingCart->toArray();
-        return $this->getCartRepository()->shouldReturnModel()->createCart($cartPayload);
-    }
-
-    /**
-     * Update cart.
-     *
-     * @param Order $oldOrder
-     * @param Cart $inspectedShoppingCart
-     * @return Cart
-     */
-    private function updateOrderCart(Cart $oldOrder, Cart $inspectedShoppingCart): Cart
-    {
-        $cartPayload = $inspectedShoppingCart->toArray();
-        return $this->getCartRepository()->shouldReturnModel()->updateCart($oldOrder->cart, $cartPayload);
-    }
-
-    /**
      * Prepare transaction payload.
      *
      * @param Order $order
@@ -1870,40 +2048,18 @@ class OrderRepository extends BaseRepository
      */
     private function generateOrderSummary(Order $order): void
     {
-        $cart = $order->cart;
-
-        $summary = collect($cart->productLines)->sortBy('position')->map(function(ProductLine $productLine) {
-            return $productLine->quantity >= 2 ? $productLine->quantity . 'x(' . $productLine->name . ')' : $productLine->name;
+        $summary = collect($order->orderProducts)->sortBy('position')->map(function(OrderProduct $orderProduct) {
+            return $orderProduct->quantity >= 2 ? $orderProduct->quantity . 'x(' . $orderProduct->name . ')' : $orderProduct->name;
         })->join(', ', ' and ');
 
-        if($order->collection_type == 'Delivery' && !$cart->allow_free_delivery) {
-            $summary .= ' plus delivery';
+        $summary .= ' for ' . $order->grand_total->amountWithCurrency;
 
-            if(!is_null($order->destination_name)) {
-                $summary .= ' to ' . ucwords($order->destination_name);
-            }
+        if($order->discount_total->amount > 0) {
+            $summary .= ' while saving ' . $order->discount_total->amountWithCurrency;
         }
 
-        $summary .= ' for ' . $cart->grand_total->amountWithCurrency;
-
-        if($cart->coupon_and_sale_discount_total->amount > 0) {
-            $summary .= ' while saving ' . $cart->coupon_and_sale_discount_total->amountWithCurrency;
-
-            if($cart->allow_free_delivery) {
-                $summary .= ' plus free delivery';
-            }
-        }
-
-        if($order->collection_type == 'Delivery' && $cart->allow_free_delivery) {
+        if($order->free_delivery) {
             $summary .= ' plus free delivery';
-
-            if(!is_null($order->destination_name)) {
-                $summary .= ' to ' . ucwords($order->destination_name);
-            }
-        }
-
-        if($order->collection_type == 'Pickup' && !is_null($order->destination_name)) {
-            $summary .= ', pickup from ' . ucwords($order->destination_name);
         }
 
         $order->update(['summary' => $summary]);

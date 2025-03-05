@@ -44,9 +44,9 @@ class Store extends BaseModel
             'description' => 'Permission to manage orders'
         ],
         [
-            'name' => 'Manage coupons',
-            'grant' => 'manage coupons',
-            'description' => 'Permission to manage coupons'
+            'name' => 'Manage promotions',
+            'grant' => 'manage promotions',
+            'description' => 'Permission to manage promotions'
         ],
         [
             'name' => 'Manage products',
@@ -62,11 +62,6 @@ class Store extends BaseModel
             'name' => 'Manage team members',
             'grant' => 'manage team members',
             'description' => 'Permission to manage team members'
-        ],
-        [
-            'name' => 'Manage instant carts',
-            'grant' => 'manage instant carts',
-            'description' => 'Permission to manage instant carts'
         ],
         [
             'name' => 'Manage settings',
@@ -115,8 +110,8 @@ class Store extends BaseModel
      *  Magic Numbers
      */
     const MAXIMUM_ADVERTS = 5;
-    const MAXIMUM_COUPONS = 50;
     const MAXIMUM_PRODUCTS = 50;
+    const MAXIMUM_PROMOTIONS = 50;
     const NAME_MIN_CHARACTERS = 3;
     const NAME_MAX_CHARACTERS = 25;
     const ALIAS_MIN_CHARACTERS = 3;
@@ -358,14 +353,9 @@ class Store extends BaseModel
         return $this->hasMany(Review::class)->latest();
     }
 
-    public function coupons()
+    public function promotions()
     {
-        return $this->hasMany(Coupon::class);
-    }
-
-    public function carts()
-    {
-        return $this->hasMany(Cart::class);
+        return $this->hasMany(Promotion::class);
     }
 
     public function orders()
@@ -380,7 +370,12 @@ class Store extends BaseModel
 
     public function createdOrders()
     {
-        return $this->belongsTo(User::class, 'created_by_user_id', $this->hasAuthUser() ? $this->getAuthUser()->id : 0);
+        return $this->orders()->where('created_by_user_id', $this->hasAuthUser() ? $this->getAuthUser()->id : 0);
+    }
+
+    public function assignedOrders()
+    {
+        return $this->orders()->where('assigned_to_user_id', $this->hasAuthUser() ? $this->getAuthUser()->id : 0);
     }
 
     public function userStoreAssociation()

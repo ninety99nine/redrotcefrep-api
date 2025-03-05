@@ -48,7 +48,7 @@ class StoreUpdated
 
         //  Countable relationships
         $countableRelationships = array_merge([$teamMembers, $followers], [
-            'orders', 'products', 'coupons', 'reviews'
+            'orders', 'products', 'promotions', 'reviews'
         ]);
 
         $products = ['products' => function ($query) {

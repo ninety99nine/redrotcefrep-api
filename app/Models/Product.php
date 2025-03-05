@@ -242,9 +242,9 @@ class Product extends BaseModel
         return $this->hasMany(Product::class, 'parent_product_id')->with('variables');
     }
 
-    public function productLines()
+    public function orderProducts()
     {
-        return $this->hasMany(ProductLine::class);
+        return $this->hasMany(OrderProduct::class);
     }
 
     /**

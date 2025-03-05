@@ -36,7 +36,7 @@ class FriendRepository extends UserRepository
 
         }
 
-        return $this->applyFiltersOnQuery()->getOrCountResources();
+        return $this->getOutput();
     }
 
     /**

@@ -41,7 +41,9 @@ class HomeResource extends BaseResource
 
             new ResourceLink('show.orders', route('show.orders')),
             new ResourceLink('create.order', route('create.order')),
+            new ResourceLink('update.orders', route('update.orders')),
             new ResourceLink('delete.orders', route('delete.orders')),
+            new ResourceLink('download.orders', route('download.orders')),
             new ResourceLink('show.order.status.counts', route('show.order.status.counts')),
 
             new ResourceLink('show.products', route('show.products')),
@@ -74,9 +76,9 @@ class HomeResource extends BaseResource
             new ResourceLink('update.module.visibility', route('update.module.visibility')),
             new ResourceLink('update.module.arrangement', route('update.module.arrangement')),
 
-            new ResourceLink('show.coupons', route('show.coupons')),
-            new ResourceLink('create.coupon', route('create.coupon')),
-            new ResourceLink('delete.coupons', route('delete.coupons')),
+            new ResourceLink('show.promotions', route('show.promotions')),
+            new ResourceLink('create.promotion', route('create.promotion')),
+            new ResourceLink('delete.promotions', route('delete.promotions')),
 
             new ResourceLink('show.customers', route('show.customers')),
             new ResourceLink('create.customer', route('create.customer')),
@@ -111,6 +113,11 @@ class HomeResource extends BaseResource
             new ResourceLink('show.notifications', route('show.notifications')),
             new ResourceLink('show.subscriptions', route('show.subscriptions')),
 
+            new ResourceLink('show.couriers', route('show.couriers')),
+            new ResourceLink('create.courier', route('create.courier')),
+            new ResourceLink('delete.couriers', route('delete.couriers')),
+            new ResourceLink('update.courier.arrangement', route('update.courier.arrangement')),
+
             new ResourceLink('show.payment.methods', route('show.payment.methods')),
             new ResourceLink('create.payment.method', route('create.payment.method')),
             new ResourceLink('delete.payment.methods', route('delete.payment.methods')),
@@ -141,7 +148,8 @@ class HomeResource extends BaseResource
             new ResourceLink('show.review.rating.options', route('show.review.rating.options')),
             new ResourceLink('show.ai.message.categories', route('show.ai.message.categories')),
 
-            new ResourceLink('launch.ussd', route('launch.ussd')),
+            new ResourceLink('show.filters', route('show.filters')),
+            new ResourceLink('show.sorting', route('show.sorting')),
             new ResourceLink('show.languages', route('show.languages')),
             new ResourceLink('show.countries', route('show.countries')),
             new ResourceLink('show.currencies', route('show.currencies')),

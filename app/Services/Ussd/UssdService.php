@@ -2,6 +2,7 @@
 
 namespace App\Services\Ussd;
 
+use App\Models\Store;
 use GuzzleHttp\Client;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
@@ -120,76 +121,5 @@ class UssdService
         $parts = preg_split($pattern, $ussd, -1, PREG_SPLIT_NO_EMPTY);
 
         return end($parts) ?: null;
-    }
-
-    /**
-     *  Launch the USSD service
-     *
-     *  @param Request $request
-     */
-    public static function launchUssd(Request $request)
-    {
-        try {
-
-            //  Set the request endpoint
-            $endpoint = config('app.USSD_ENDPOINT');
-
-            $msg = $request->input('msg');
-            $sessionId = $request->input('session_id');
-            $requestType = $request->input('request_type');
-            $msisdn = $request->auth_user->mobile_number->formatE164();
-
-            if($requestType == '1') {
-                $msg = self::getMainShortcode($request->auth_user->mobile_number->getCountry());
-            }
-
-            //  Set the request options
-            $options = [
-                'headers' => [
-                    'Content-Type' => 'application/json',
-                    'Accept' => 'application/json',
-                ],
-                'json' => [
-                    "msg" => $msg,
-                    "msisdn" => $msisdn,
-                    "session_id" => $sessionId,
-                    "request_type" => $requestType
-                ],
-            ];
-
-            //  Create a new Http Guzzle Client
-            $httpClient = new Client();
-
-            //  Perform and return the Http request
-            $response = $httpClient->request('POST', $endpoint, $options);
-
-        } catch (\Throwable $e) {
-
-            return [
-                'status' => false,
-                'message' => $e->getMessage(),
-                'exception' => $e->__toString(),
-            ];
-
-        }
-
-        /**
-         *  Get the response body as a String.
-         */
-        $jsonString = $response->getBody();
-
-        /**
-         *  Get the response body as an Associative Array.
-         */
-        $bodyAsArray = json_decode($jsonString, true);
-
-        //  Get the response status code e.g "200"
-        $statusCode = $response->getStatusCode();
-
-        //  Return the status and the body
-        return [
-            'status' => ($statusCode == 200),
-            'body' => $bodyAsArray
-        ];
     }
 }

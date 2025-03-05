@@ -111,26 +111,6 @@ trait OrderTrait
     }
 
     /**
-     *  Check if this order is collected via delivery
-     *
-     *  @return bool
-     */
-    public function isCollectionViaDelivery()
-    {
-        return strtolower($this->getRawOriginal('collection_type')) === 'delivery';
-    }
-
-    /**
-     *  Check if this order is collected via pickup
-     *
-     *  @return bool
-     */
-    public function isCollectionViaPickup()
-    {
-        return strtolower($this->getRawOriginal('collection_type')) === 'pickup';
-    }
-
-    /**
      *  Make this order anonymous by overiding information
      *  that would expose the identity of the customer
      *

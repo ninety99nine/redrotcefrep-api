@@ -30,7 +30,6 @@ class OrderResource extends BaseResource
             new ResourceLink('mark.order.as.paid', route('mark.order.as.paid', ['orderId' => $order->id])),
             new ResourceLink('mark.order.as.unpaid', route('mark.order.as.unpaid', ['orderId' => $order->id])),
             new ResourceLink('show.payment.methods.for.marking.as.paid', route('show.payment.methods.for.marking.as.paid', ['orderId' => $order->id])),
-            new ResourceLink('show.order.cart', route('show.order.cart', ['orderId' => $order->id])),
             new ResourceLink('show.order.store', route('show.order.store', ['orderId' => $order->id])),
             new ResourceLink('show.order.customer', route('show.order.customer', ['orderId' => $order->id])),
             new ResourceLink('show.order.occasion', route('show.order.occasion', ['orderId' => $order->id])),

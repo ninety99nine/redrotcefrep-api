@@ -7,12 +7,14 @@ use App\Traits\AuthTrait;
 use App\Enums\ReturnType;
 use Illuminate\Support\Str;
 use App\Traits\Base\BaseTrait;
+use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use App\Services\ShoppingCart\ShoppingCartService;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Resources\Json\ResourceCollection;
+use \Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
  * Class BaseRepository
@@ -25,8 +27,8 @@ abstract class BaseRepository
 
     protected $query = null;
     protected int $perPage = 15;
-    protected int $maxPerPage = 50;
     protected $authourized = false;
+    protected int $maxPerPage = 200;
     protected $returnType = ReturnType::ARRAY;
     protected string|null $resourceName = null;
     protected string|null $modelClassName = null;
@@ -168,6 +170,25 @@ abstract class BaseRepository
     }
 
     /**
+     * Get the export class name.
+     *
+     * @return string
+     */
+    private function getExportClassName(): string
+    {
+        return $this->exportClassName ?? $this->getFallbackExportClassName();
+    }
+
+    /**
+     * Get the fallback export class name.
+     *
+     * @return string
+     */
+    private function getFallbackExportClassName(): string
+    {
+        return 'App\Exports\\' . Str::replace('Repository', 'Export', class_basename($this));
+    }
+    /**
      * Apply search on query.
      *
      * @return self
@@ -272,7 +293,7 @@ abstract class BaseRepository
     public function applyFilterOnQuery(string $filter): void
     {
         $extracted = self::extractColumnOperatorAndValue($filter);
-        $column = array_shift($extracted);
+        $column = Str::snake(array_shift($extracted));
         $operator = array_shift($extracted);
         $input1 = array_shift($extracted);
         $input2 = array_shift($extracted);
@@ -284,11 +305,35 @@ abstract class BaseRepository
         $modelInstance = new $modelClassName();
         $casts = $modelInstance->getCasts();
 
-        $columnWithoutArrows = explode('->', $column)[0];
-        $isJsonField = isset($casts[$columnWithoutArrows]) && $casts[$columnWithoutArrows] == 'App\Casts\JsonToArray';
+        $columnWithoutArrows = explode('->', $column);
+        $isJsonField = isset($casts[$columnWithoutArrows[0]]) && $casts[$columnWithoutArrows[0]] == 'App\Casts\JsonToArray';
+        $isRelationship = count($columnWithoutArrows) > 1 && !$isJsonField;
 
         if($isJsonField) {
             $query = $this->applyJsonComparison($column, $operator, $input1, $input2);
+        }else if($isRelationship) {
+
+            [$relation, $relationColumn] = explode('->', $column, 2);
+            $relation = Str::camel($relation);
+
+            $query = $this->getQuery()->whereHas($relation, function ($query) use ($relationColumn, $operator, $input1, $input2) {
+                if ($operator == 'bt') {
+                    $query->where($relationColumn, '>=', $input1)
+                          ->where($relationColumn, '<=', $input2);
+                } elseif ($operator == 'bt_ex') {
+                    $query->where($relationColumn, '>', $input1)
+                          ->where($relationColumn, '<', $input2);
+                } elseif ($operator == 'in') {
+                    $query->whereIn($relationColumn, explode(',', $input1));
+                } elseif ($operator == 'not_in') {
+                    $query->whereNotIn($relationColumn, explode(',', $input1));
+                } elseif ($operator == 'like') {
+                    $query->where($relationColumn, 'LIKE', '%' . $input1 . '%');
+                } else {
+                    $query->where($relationColumn, $operator, $input1);
+                }
+            });
+
         }else if($operator == 'bt') {
 
             $query = $this->getQuery()
@@ -327,7 +372,14 @@ abstract class BaseRepository
      */
     public static function extractColumnOperatorAndValue(string $input): array
     {
-        $parts = explode(':', $input);
+        if (Str::contains($input, ['bt', 'bt_ex'])) {
+            $parts = explode(':', $input, 4);
+            if (count($parts) != 4) throw new Exception("The filter format is incorrect: '$input'");
+        } else {
+            $parts = explode(':', $input, 3);
+            if (count($parts) != 3) throw new Exception("The filter format is incorrect: '$input'");
+        }
+
         $column = array_shift($parts);
         $operator = array_shift($parts);
         $operator = self::convertOperatorToSymbol($operator);
@@ -467,6 +519,134 @@ abstract class BaseRepository
         return [$jsonColumn, $jsonPath];
     }
 
+
+
+
+
+
+    /**
+     * Apply sorting on query.
+     *
+     * How it works
+     *
+     * -------------------------------------
+     * Single Column Sort:
+     * -------------------------------------
+     *
+     * name:asc
+     * created_at:desc
+     *
+     * -------------------------------------
+     * Multiple Column Sort:
+     * -------------------------------------
+     *
+     * name:asc|price:desc
+     *
+     * -------------------------------------
+     * JSON Field Sort:
+     * -------------------------------------
+     *
+     * metadata->sms_credits:asc
+     *
+     * -------------------------------------
+     * Relationship Sort:
+     * -------------------------------------
+     *
+     * category->name:asc
+     *
+     * @return self
+     */
+    protected function applySortingOnQuery(): self
+    {
+        if (request()->filled('_sort')) {
+            $sorts = explode('|', request()->input('_sort'));
+            $sorts = collect($sorts)->map(fn($sort) => trim($sort));
+
+            foreach ($sorts as $sort) {
+                $this->applySortOnQuery($sort);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * Apply a single sort operation on the query.
+     *
+     * @param string $sort e.g "name:asc"
+     * @return void
+     */
+    protected function applySortOnQuery(string $sort): void
+    {
+        $extracted = $this->extractColumnAndDirection($sort);
+        $column = Str::snake($extracted['column']);
+        $direction = $extracted['direction'];
+
+        $modelClassName = $this->getModelClassName();
+        $modelInstance = new $modelClassName();
+        $casts = $modelInstance->getCasts();
+
+        $columnWithoutArrows = explode('->', $column);
+        $isJsonField = isset($casts[$columnWithoutArrows[0]]) && $casts[$columnWithoutArrows[0]] == 'App\Casts\JsonToArray';
+        $isRelationship = count($columnWithoutArrows) > 1 && !$isJsonField;
+
+        if ($isJsonField) {
+
+            // Apply JSON sorting
+            $query = $this->getQuery()->orderByRaw("JSON_UNQUOTE(JSON_EXTRACT({$columnWithoutArrows[0]}, '$." . implode('.', array_slice($columnWithoutArrows, 1)) . "')) $direction");
+
+        } elseif ($isRelationship) {
+
+            // Apply Relationship sorting
+            [$relation, $relationColumn] = explode('->', $column, 2);
+            $relation = Str::camel($relation);
+
+            $query = $this->getQuery()->orderBy(
+                function ($query) use ($relation, $relationColumn) {
+                    $query->select($relationColumn)
+                        ->from($relation)
+                        ->whereColumn("{$relation}.id", "{$this->getModelTable()}.{$relation}_id");
+                },
+                $direction
+            );
+
+        } else {
+
+            // Regular column sorting
+            $query = $this->getQuery()->orderBy($column, $direction);
+
+        }
+
+        $this->setQuery($query);
+    }
+
+    /**
+     * Extract column and direction.
+     *
+     * @param string $input
+     * @return array
+     */
+    protected function extractColumnAndDirection(string $input): array
+    {
+        $parts = explode(':', $input, 2);
+        if (count($parts) != 2) throw new Exception("The sorting format is incorrect: '$input'");
+
+        $column = $parts[0];
+        $direction = strtolower($parts[1]);
+
+        if (!in_array($direction, ['asc', 'desc'])) {
+            throw new Exception("Invalid sorting direction for column ($column): '$direction'");
+        }
+
+        return ['column' => $column, 'direction' => $direction];
+    }
+
+
+
+
+
+
+
     /**
      * Apply eager loading on query.
      *
@@ -550,7 +730,18 @@ abstract class BaseRepository
      */
     protected function checkIfShouldCountResources()
     {
-        return $this->isTruthy(request()->input('count'));
+        return $this->isTruthy(request()->input('_count'));
+    }
+
+    /**
+     * Check if should count resources.
+     *
+     * @param Model $model
+     * @return Model
+     */
+    protected function checkIfShouldExportResources()
+    {
+        return $this->isTruthy(request()->input('_export'));
     }
 
     /**
@@ -576,18 +767,22 @@ abstract class BaseRepository
     }
 
     /**
-     * Get or count resources.
+     * Get output.
      *
-     * @return array|ResourceCollection
+     * @return array|BinaryFileResponse|ResourceCollection
      */
-    protected function getOrCountResources(): array|ResourceCollection
+    protected function getOutput(): array|BinaryFileResponse|ResourceCollection
     {
         $this->applySearchOnQuery();
-        $this->applyEagerLoadingOnQuery();
+        $this->applyFiltersOnQuery();
+        $this->applySortingOnQuery();
 
         if($this->checkIfShouldCountResources()) {
             return $this->countResources();
+        }else if($this->checkIfShouldExportResources()) {
+            return $this->exportResources();
         }else{
+            $this->applyEagerLoadingOnQuery();
             return $this->getResources();
         }
     }
@@ -600,6 +795,43 @@ abstract class BaseRepository
     protected function countResources(): array
     {
         return ['total' => $this->query->count()];
+    }
+
+    /**
+     * Export resources.
+     *
+     * @return BinaryFileResponse
+     */
+    protected function exportResources(): BinaryFileResponse
+    {
+        $resourceName = $this->getResourceName();
+        $exportClassName = $this->getExportClassName();
+        $resourceNameInPlural = Str::plural($resourceName);
+
+        // Get export format from request (default to CSV)
+        $format = request()->input('export_format', 'csv');
+
+        // Set file extension and format type based on the format
+        $formats = [
+            'csv'  => \Maatwebsite\Excel\Excel::CSV,
+            'xlsx' => \Maatwebsite\Excel\Excel::XLSX,
+            'pdf'  => \Maatwebsite\Excel\Excel::DOMPDF, // Requires DomPDF installed
+        ];
+
+        // Validate format and set filename
+        $format = array_key_exists($format, $formats) ? $format : 'csv';
+        $fileName = $resourceNameInPlural . '.' . $format;
+
+        // Limit the export data
+        $exportLimit = request()->input('export_limit', 5000);
+        $exportLimit = is_numeric($exportLimit) ? (int) $exportLimit : 5000;
+        $exportLimit = min($exportLimit, 5000);
+
+        // Generate export instance
+        $export = new $exportClassName($this->query->limit($exportLimit));
+
+        // Return the exported file in the requested format
+        return Excel::download($export, $fileName, $formats[$format]);
     }
 
     /**
@@ -740,11 +972,6 @@ abstract class BaseRepository
         return app(AuthRepository::class);
     }
 
-    protected function getCartRepository(): CartRepository
-    {
-        return app(CartRepository::class);
-    }
-
     protected function getUserRepository(): UserRepository
     {
         return app(UserRepository::class);
@@ -758,11 +985,6 @@ abstract class BaseRepository
     protected function getOrderRepository(): OrderRepository
     {
         return app(OrderRepository::class);
-    }
-
-    protected function getCouponRepository(): CouponRepository
-    {
-        return app(CouponRepository::class);
     }
 
     protected function getProductRepository(): ProductRepository
@@ -798,6 +1020,11 @@ abstract class BaseRepository
     protected function getMediaFileRepository(): MediaFileRepository
     {
         return app(MediaFileRepository::class);
+    }
+
+    protected function getPromotionRepository(): PromotionRepository
+    {
+        return app(PromotionRepository::class);
     }
 
     protected function getTransactionRepository(): TransactionRepository

@@ -101,9 +101,8 @@ class UserStoreAssociation extends BasePivot
         'is_follower', 'is_unfollower', 'is_follower_who_is_invited', 'is_follower_who_has_declined',
         'is_team_member_who_has_joined', 'is_team_member_who_has_left', 'is_team_member_who_is_invited', 'is_team_member_who_has_declined',
         'is_team_member_as_creator_or_admin', 'is_team_member_as_creator', 'is_team_member_as_admin',
-        'can_manage_everything', 'can_manage_orders', 'can_manage_products', 'can_manage_coupons', 'can_manage_customers',
-        'can_manage_team_members', 'can_manage_instant_carts', 'can_manage_settings',
-        'has_full_permissions'
+        'can_manage_everything', 'can_manage_orders', 'can_manage_products', 'can_manage_promotions', 'can_manage_customers',
+        'can_manage_team_members', 'can_manage_settings', 'has_full_permissions'
     ];
 
     /**
@@ -257,12 +256,12 @@ class UserStoreAssociation extends BasePivot
     }
 
     /**
-     *  Check if this user can manage coupons
+     *  Check if this user can manage promotions
      */
-    protected function canManageCoupons(): Attribute
+    protected function canManagePromotions(): Attribute
     {
         return new Attribute(
-            get: fn () => $this->hasPermissionTo('manage coupons')
+            get: fn () => $this->hasPermissionTo('manage promotions')
         );
     }
 
@@ -283,16 +282,6 @@ class UserStoreAssociation extends BasePivot
     {
         return new Attribute(
             get: fn () => $this->hasPermissionTo('manage team members')
-        );
-    }
-
-    /**
-     *  Check if this user can manage instant carts
-     */
-    protected function canManageInstantCarts(): Attribute
-    {
-        return new Attribute(
-            get: fn () => $this->hasPermissionTo('manage instant carts')
         );
     }
 

@@ -2,14 +2,12 @@
 
 namespace App\Providers;
 
-use App\Models\Cart;
 use App\Models\User;
 use App\Models\Store;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\Address;
 use App\Models\FriendGroup;
-use App\Observers\CartObserver;
 use App\Observers\UserObserver;
 use App\Observers\OrderObserver;
 use App\Observers\StoreObserver;
@@ -39,7 +37,6 @@ class EventServiceProvider extends ServiceProvider
     public function boot(): void
     {
         User::observe(UserObserver::class);
-        Cart::observe(CartObserver::class);
         Order::observe(OrderObserver::class);
         Store::observe(StoreObserver::class);
         Product::observe(ProductObserver::class);

@@ -46,7 +46,8 @@ class PaymentMethodRepository extends BaseRepository
 
                         $excludeTypes = [
                             ...$existingPaymentMethodTypes,
-                            PaymentMethodType::ORANGE_AIRTIME->value
+                            PaymentMethodType::ORANGE_AIRTIME->value,
+                            PaymentMethodType::DPO->value
                         ];
 
                         $query = PaymentMethod::select('id', 'name', 'type', 'automated_verification', 'config_schema')
@@ -73,7 +74,7 @@ class PaymentMethodRepository extends BaseRepository
             }
         }
 
-        return $this->applyFiltersOnQuery()->getOrCountResources();
+        return $this->getOutput();
     }
 
     /**

@@ -3,7 +3,6 @@
 namespace App\Notifications\Subscriptions;
 
 use App\Models\Base\BaseModel;
-use App\Models\InstantCart;
 use App\Models\User;
 use App\Models\Store;
 use App\Models\AiAssistant;
@@ -72,9 +71,9 @@ class SubscriptionCreated extends Notification implements ShouldQueue
         $subscriptionByUser = $this->subscriptionByUser;
         $subscriptionForUser = $this->subscriptionForUser;
 
-        if($subscriptionFor instanceof Store || $subscriptionFor instanceof InstantCart) {
+        if($subscriptionFor instanceof Store) {
 
-            //  Get the store or instant cart name
+            //  Get the store name
             $name = $subscriptionFor->name;
 
         }else if($subscriptionFor instanceof AiAssistant) {

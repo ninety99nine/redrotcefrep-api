@@ -40,7 +40,7 @@ class PricingPlanRepository extends BaseRepository
     public function showPricingPlans(): PricingPlanResources|array
     {
         $this->setQuery(PricingPlan::query()->latest());
-        return $this->applyFiltersOnQuery()->getOrCountResources();
+        return $this->getOutput();
     }
 
     /**

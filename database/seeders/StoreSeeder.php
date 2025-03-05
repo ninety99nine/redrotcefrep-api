@@ -2,12 +2,12 @@
 
 namespace Database\Seeders;
 
-use App\Models\Coupon;
 use App\Models\Store;
 use App\Models\Product;
+use App\Models\Promotion;
+use App\Models\PricingPlan;
 use Illuminate\Http\Request;
 use Illuminate\Database\Seeder;
-use App\Models\PricingPlan;
 use Illuminate\Support\Facades\DB;
 use App\Repositories\StoreRepository;
 use Database\Seeders\Traits\SeederHelper;
@@ -64,8 +64,8 @@ class StoreSeeder extends Seeder
 
                 )->has(
 
-                    //  Create 0 to 5 fake coupons for this store
-                    Coupon::factory()->count(rand(0, 5))->state(function (array $attributes, Store $store) use ($userId) {
+                    //  Create 0 to 5 fake promotions for this store
+                    Promotion::factory()->count(rand(0, 5))->state(function (array $attributes, Store $store) use ($userId) {
 
                         //  Set the user_id on the product (This means that this user created this product)
                         return ['user_id' => $userId];

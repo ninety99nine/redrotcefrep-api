@@ -2,20 +2,27 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Store;
 use App\Enums\CacheName;
 use Illuminate\Support\Str;
 use App\Helpers\CacheManager;
 use App\Traits\Base\BaseTrait;
+use App\Enums\SortResourceType;
+use App\Enums\FilterResourceType;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use App\Services\Ussd\UssdService;
 use App\Http\Resources\UserResource;
 use App\Http\Resources\HomeResource;
 use App\Repositories\UserRepository;
+use App\Services\Filter\FilterService;
+use App\Services\Sorting\SortingService;
 use App\Services\Country\CountryService;
 use App\Services\Currency\CurrencyService;
 use App\Services\Language\LanguageService;
 use App\Http\Controllers\Base\BaseController;
+use App\Http\Requests\Home\ShowSortingRequest;
+use App\Http\Requests\Home\ShowFiltersRequest;
 use App\Http\Requests\Home\ShowApiHomeRequest;
 use App\Http\Requests\Home\ShowCountriesRequest;
 use App\Http\Requests\Home\ShowLanguagesRequest;
@@ -100,6 +107,36 @@ class HomeController extends BaseController
         }
 
         return (new HomeResource($data));
+    }
+
+    /**
+     * Show filters.
+     *
+     * @param ShowFiltersRequest $request
+     * @return JsonResponse
+     */
+    public function showFilters(ShowFiltersRequest $request): JsonResponse
+    {
+        $type = FilterResourceType::tryFrom($request->input('type'));
+        $store = $request->has('store_id') ? Store::find($request->input('store_id')) : null;
+
+        $filterService = new FilterService;
+        if(!empty($store)) $filterService->setStore($store);
+
+        return $this->prepareOutput($filterService->getFiltersByResourceType($type));
+    }
+
+    /**
+     * Show sorting.
+     *
+     * @param ShowSortingRequest $request
+     * @return JsonResponse
+     */
+    public function showSorting(ShowSortingRequest $request): JsonResponse
+    {
+        $sortingService = new SortingService;
+        $type = SortResourceType::tryFrom($request->input('type'));
+        return $this->prepareOutput($sortingService->getSortingOptionsByResourceType($type));
     }
 
     /**
