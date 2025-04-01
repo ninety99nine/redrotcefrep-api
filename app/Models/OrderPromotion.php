@@ -4,10 +4,10 @@ namespace App\Models;
 
 use App\Casts\Money;
 use App\Casts\Status;
+use App\Enums\RateType;
 use App\Casts\Currency;
 use App\Casts\Percentage;
 use App\Casts\JsonToArray;
-use App\Enums\DiscountType;
 use App\Traits\ItemLineTrait;
 use App\Models\Base\BaseModel;
 use Illuminate\Database\Eloquent\Model;
@@ -19,9 +19,9 @@ class OrderPromotion extends BaseModel
 
     protected $table = 'order_promotions';
 
-    public static function DISCOUNT_TYPES(): array
+    public static function DISCOUNT_RATE_TYPES(): array
     {
-        return array_map(fn($method) => $method->value, DiscountType::cases());
+        return array_map(fn($method) => $method->value, RateType::cases());
     }
 
     protected $casts = [
@@ -32,7 +32,7 @@ class OrderPromotion extends BaseModel
         'offer_free_delivery' => 'boolean',
         'activate_using_code' => 'boolean',
         'hours_of_day' => JsonToArray::class,
-        'discount_fixed_rate' => Money::class,
+        'discount_flat_rate' => Money::class,
         'minimum_grand_total' => Money::class,
         'detected_changes' => JsonToArray::class,
         'activate_for_new_customer' => 'boolean',
@@ -80,7 +80,7 @@ class OrderPromotion extends BaseModel
             'name', 'description',
 
             /*  Offer Discount Information */
-            'offer_discount', 'discount_type', 'discount_percentage_rate', 'discount_fixed_rate',
+            'offer_discount', 'discount_rate_type', 'discount_percentage_rate', 'discount_flat_rate',
 
             /*  Offer Free Delivery Information */
             'offer_free_delivery',

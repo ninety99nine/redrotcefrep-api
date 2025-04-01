@@ -34,6 +34,7 @@ return [
     'DPO_PAYMENT_URL' => env('DPO_PAYMENT_URL'),
     'USSD_ENDPOINT' => env('USSD_ENDPOINT'),
     'FRONTEND_URI' => env('FRONTEND_URI'),
+    'FCS_API_KEY' => env('FCS_API_KEY'),
     'USSD_TOKEN' => env('USSD_TOKEN'),
 
     'SMS_SENDER_MOBILE_NUMBER' => env('SMS_SENDER_MOBILE_NUMBER'),

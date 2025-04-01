@@ -23,8 +23,8 @@ class CreateWorkflowsTable extends Migration
             /*  Basic Information  */
             $table->boolean('active')->default(0);
             $table->string('name', Workflow::NAME_MAX_CHARACTERS);
-            $table->enum('resource', Workflow::WORKFLOW_RESOURCE_TYPES())->default(WorkflowResourceType::ORDER);
-            $table->enum('trigger', Workflow::WORKFLOW_TRIGGER_TYPES())->default(WorkflowTriggerType::WAITING);
+            $table->enum('resource', Workflow::WORKFLOW_RESOURCE_TYPES())->default(WorkflowResourceType::ORDER->value);
+            $table->enum('trigger', Workflow::WORKFLOW_TRIGGER_TYPES())->default(WorkflowTriggerType::WAITING->value);
 
             /*  Arrangement Information  */
             $table->unsignedTinyInteger('position')->nullable();

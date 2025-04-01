@@ -5,9 +5,8 @@ namespace Database\Seeders;
 use App\Models\PaymentMethod;
 use Illuminate\Database\Seeder;
 use App\Enums\PaymentMethodType;
-use App\Enums\PaymentMethodCategory;
-use Database\Seeders\Traits\SeederHelper;
 use Illuminate\Support\Facades\Log;
+use Database\Seeders\Traits\SeederHelper;
 
 class PaymentMethodSeeder extends Seeder
 {
@@ -137,8 +136,8 @@ class PaymentMethodSeeder extends Seeder
         ];
 
         $emailValidationRules = fn() => [
-            'required' => [true, "The email is required"],
-            'regex_pattern' => ['^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', "Enter a valid email address, e.g., user@example.com"]
+            'required' => [true, 'The email is required'],
+            'regex_pattern' => ['^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', 'Enter a valid email address, e.g., user@example.com']
         ];
 
         $mobileNumberValidationRules = fn($label) => [
@@ -146,12 +145,12 @@ class PaymentMethodSeeder extends Seeder
         ];
 
         $merchantCodeValidationRules = fn() => [
-            'required' => [true, "The Merchant code is required"],
-            'regex_pattern' => ['^[A-Za-z0-9]{5,20}$', "Enter a valid merchant code (5-20 alphanumeric characters)"]
+            'required' => [true, 'The Merchant code is required'],
+            'regex_pattern' => ['^[A-Za-z0-9]{5,20}$', 'Enter a valid merchant code (5-20 alphanumeric characters)']
         ];
 
         $customDialCodeValidationRules = fn() => [
-            'regex_pattern' => ['^\*\d{1,3}(\*(\d+|\{[a-zA-Z_]+\}))*#$', "Enter a valid USSD dial code (e.g., *123*1*2#)"]
+            'regex_pattern' => ['^\*\d{1,3}(\*(\d+|\{[a-zA-Z_]+\}))*#$', 'Enter a valid USSD dial code (e.g., *123*1*2#)']
         ];
 
         $urlValidationRules = fn($label, $placeholder) => [
@@ -168,14 +167,13 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Pix',
                 'type' => PaymentMethodType::PIX,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'BR' // Brazil
-                ],
+                'countries' => ['BR'],
+                'currencies' => ['BRL'],
                 'config_schema' => [
                     [
                         'type' => 'select',
                         'label' => 'ID type',
-                        'attribute' => 'id_type',
+                        'attribute' => 'idType',
                         'default' => 'email',
                         'options' => [
                             ['label' => 'Phone number', 'value' => 'phone number'],
@@ -188,35 +186,35 @@ class PaymentMethodSeeder extends Seeder
                     [
                         'type' => 'mobile_number',
                         'label' => 'Phone number',
-                        'attribute' => 'phone_number',
-                        'condition' => ['id_type=phone number'],
+                        'attribute' => 'phoneNumber',
+                        'condition' => ['idType=phone number'],
                         'validation_rules' => $mobileNumberValidationRules('Phone number')
                     ],
                     [
                         'type' => 'email',
                         'label' => 'Email',
                         'attribute' => 'email',
-                        'condition' => ['id_type=email'],
+                        'condition' => ['idType=email'],
                         'validation_rules' => $emailValidationRules()
                     ],
                     [
                         'type' => 'string',
                         'label' => 'CPF',
                         'attribute' => 'cpf',
-                        'condition' => ['id_type=cpf'],
+                        'condition' => ['idType=cpf'],
                         'validation_rules' => [
-                            'required' => [true, "The CPF is required"],
-                            'regex_pattern' => ['^\d{11}$', "CPF must be exactly 11 digits"]
+                            'required' => [true, 'The CPF is required'],
+                            'regex_pattern' => ['^\d{11}$', 'CPF must be exactly 11 digits']
                         ]
                     ],
                     [
                         'type' => 'string',
                         'label' => 'CNPJ',
                         'attribute' => 'cnpj',
-                        'condition' => ['id_type=cnpj'],
+                        'condition' => ['idType=cnpj'],
                         'validation_rules' => [
-                            'required' => [true, "The CNPJ is required"],
-                            'regex_pattern' => ['^\d{14}$', "CNPJ must be exactly 14 digits"]
+                            'required' => [true, 'The CNPJ is required'],
+                            'regex_pattern' => ['^\d{14}$', 'CNPJ must be exactly 14 digits']
                         ]
                     ],
                 ],
@@ -226,18 +224,17 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'UPI',
                 'type' => PaymentMethodType::UPI,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'IN' // India
-                ],
+                'countries' => ['IN'],
+                'currencies' => ['INR'],
                 'config_schema' => [
                     [
                         'type' => 'string',
                         'label' => 'UPI ID',
-                        'attribute' => 'upi_id',
+                        'attribute' => 'upiID',
                         'description' => 'Enter your UPI ID - eg. 1234567890@upi',
                         'validation_rules' => [
-                            'required' => [true, "The UPI ID is required"],
-                            'regex_pattern' => ['^[\w.-]+@[\w.-]+$',"Enter a valid UPI ID, e.g., 1234567890@upi or user@bank"]
+                            'required' => [true, 'The UPI ID is required'],
+                            'regex_pattern' => ['^[a-zA-Z0-9.]+@[a-zA-Z]+$','Enter a valid UPI ID, e.g., 1234567890@upi or user@bank']
                         ]
                     ],
                 ],
@@ -247,17 +244,19 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Yoco',
                 'type' => PaymentMethodType::YOCO,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'ZA' // South Africa
-                ],
+                'countries' => ['ZA'],
+                'currencies' => ['ZAR'],
                 'config_schema' => [
                     [
-                        'type' => 'url',
-                        'attribute' => 'url',
-                        'label' => 'Yoco username',
-                        'placeholder' => 'https://pay.yoco.com/username',
+                        'type' => 'string',
+                        'attribute' => 'username',
+                        'label' =>'Yoco username',
+                        'placeholder' => 'username',
+                        'prefix' => 'https://pay.yoco.com/',
                         'description' => 'Enter your Yoco username',
-                        'validation_rules' => $urlValidationRules('Yoco username', 'https://pay.yoco.com/username')
+                        'validation_rules' => [
+                            'required' => [true, 'The Yoco username is required']
+                        ]
                     ],
                     [
                         'type' => 'content',
@@ -278,9 +277,8 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'QRIS',
                 'type' => PaymentMethodType::QRIS,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'ID' // Indonesia
-                ],
+                'countries' => ['ID'],
+                'currencies' => ['IDR'],
                 'config_schema' => [
                     [
                         'type' => 'image',
@@ -288,32 +286,56 @@ class PaymentMethodSeeder extends Seeder
                         'label' => 'QRIS QR code',
                         'description' => 'Upload your QRIS QR code',
                         'validation_rules' => [
-                            'required' => [true, "The QR Code is required"],
-                            'qr_code' => ["The QRIS QR code is not valid"],
-                            'mime_types' => [['image/jpeg', 'image/jpg', 'image/png', 'image/gif'], "Only JPEG, JPG, PNG, and GIF formats are allowed"],
-                            'max_size' => [5 * 1024 * 1024, "Image size should not exceed 5MB"]
+                            'required' => [true, 'The QR Code is required'],
+                            'qr_code' => ['The QRIS QR code is not valid'],
+                            'mime_types' => [['image/jpeg', 'image/jpg', 'image/png', 'image/gif'], 'Only JPEG, JPG, PNG, and GIF formats are allowed'],
+                            'max_size' => [5 * 1024 * 1024, 'Image size should not exceed 5MB']
                         ]
                     ]
-                ],
+                ]
             ],
             [
                 'active' => 1,
                 'name' => 'Wise',
                 'type' => PaymentMethodType::WISE,
                 'automated_verification' => false,
-                'supported_countries' => null, // Global
+                'currencies' => ['AUD', 'BGN', 'BRL', 'CAD', 'CHF', 'CZK', 'DKK', 'EUR', 'GBP', 'HKD', 'HUF', 'IDR', 'INR', 'JPY', 'MYR', 'NOK', 'NZD', 'PLN', 'RON', 'TRY', 'SEK', 'SGD', 'USD', 'AED', 'ARS', 'BDT', 'BWP', 'CLP', 'CNY', 'COP', 'CRC', 'EGP', 'FJD', 'GEL', 'GHS', 'ILS', 'KES', 'KRW', 'LKR', 'MAD', 'MXN', 'NPR', 'PHP', 'PKR', 'THB', 'TZS', 'UAH', 'UGX', 'UYU', 'VND', 'ZAR', 'ZMW'],
+                'countries' => ['AU', 'AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR', 'HU', 'IS', 'IE', 'IT', 'LV', 'LI', 'LT', 'LU', 'MT', 'NL', 'NO', 'PL', 'PT', 'RO', 'SG', 'SK', 'SI', 'ES', 'SE', 'CH', 'GB', 'US'],
                 'config_schema' => [
                     [
-                        'type' => 'url',
-                        'attribute' => 'url',
-                        'label' => 'Wise tag',
-                        'placeholder' => 'https://wise.com/pay/me/username',
-                        'description' => 'Enter your Wise tag',
-                        'learn_more' => [
-                            'label' => 'Learn more',
-                            'href' => 'https://wise.com/help/articles/6DtiR7Ugdp7hfoKJHfRfvJ/how-do-i-use-wisetag'
+                        'type' => 'select',
+                        'label' => 'ID type',
+                        'attribute' => 'idType',
+                        'default' => 'wise username',
+                        'options' => [
+                            ['label' => 'Wise username', 'value' => 'wise username'],
+                            ['label' => 'Wise Business username', 'value' => 'wise business username']
                         ],
-                        'validation_rules' => $urlValidationRules('Wise tag', 'https://wise.com/pay/me/username')
+                        'validation_rules' => $selectValidationRules('ID type')
+                    ],
+                    [
+                        'type' => 'string',
+                        'label' =>'Wise username',
+                        'attribute' => 'username',
+                        'placeholder' => 'username',
+                        'prefix' => 'https://wise.com/pay/me/',
+                        'condition' => ['idType=wise username'],
+                        'description' => 'Enter your Wise username',
+                        'validation_rules' => [
+                            'required' => [true, 'The Wise username is required']
+                        ]
+                    ],
+                    [
+                        'type' => 'string',
+                        'placeholder' => 'username',
+                        'label' =>'Wise Business username',
+                        'attribute' => 'businessUsername',
+                        'prefix' => 'https://wise.com/pay/business/',
+                        'condition' => ['idType=wise business username'],
+                        'description' => 'Enter your Wise business username',
+                        'validation_rules' => [
+                            'required' => [true, 'The Wise business username is required']
+                        ]
                     ],
                     [
                         'type' => 'content',
@@ -334,17 +356,23 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Lynk',
                 'type' => PaymentMethodType::LYNK,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'JM' // Jamaica
-                ],
+                'currencies' => [],
+                'countries' => ['JM'],
+                'allowed_countries' => ['JM'],
                 'config_schema' => [
                     [
-                        'type' => 'url',
+                        'type' => 'string',
                         'attribute' => 'url',
                         'label' => 'Lynk payment link',
                         'placeholder' => 'https://deep.lynk.us/AbcD',
                         'description' => 'Enter your Lynk payment link',
-                        'validation_rules' => $urlValidationRules('Lynk payment link', 'https://deep.lynk.us/AbcD')
+                        'validation_rules' => [
+                            'required' => [true, 'The Lynk is required'],
+                            'regex_pattern' => [
+                                '^https:\/\/deep\.lynk\.us\/\w+(\/\w+)?$',
+                                'Enter a valid Lynk, e.g https://deep.lynk.us/AbcD'
+                            ]
+                        ]
                     ],
                     [
                         'type' => 'content',
@@ -365,43 +393,12 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'GCash',
                 'type' => PaymentMethodType::GCASH,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'PH', // Philippines
-                    'MY', // Malaysia
-                    'SG', // Singapore
-                    'TH', // Thailand
-                    'VN', // Vietnam
-                    'ID', // Indonesia
-                    'HK', // Hong Kong
-                    'TW', // Taiwan
-                    'JP', // Japan
-                    'KR', // South Korea
-                    'IN', // India
-                    'PK', // Pakistan
-                    'BD', // Bangladesh
-                    'MM', // Myanmar
-                    'LA', // Laos
-                    'KH', // Cambodia
-                    'BR', // Brazil
-                    'MX', // Mexico
-                    'US', // United States
-                    'CA', // Canada
-                    'GB', // United Kingdom
-                    'AU', // Australia
-                    'NZ', // New Zealand
-                    'ZA', // South Africa
-                    'KE', // Kenya
-                    'NG', // Nigeria
-                    'GH', // Ghana
-                    'TZ', // Tanzania
-                    'UG', // Uganda
-                    'ZM', // Zambia
-                    'MW', // Malawi
-                ],
+                'currencies' => ['PHP'],
+                'countries' => ['PH'],
                 'config_schema' => [
                     [
                         'type' => 'string',
-                        'attribute' => 'user_id',
+                        'attribute' => 'userId',
                         'label' => 'GCash User ID',
                         'description' => 'Enter your GCash User ID - eg. *****ZHU485.',
                         'learn_more' => [
@@ -409,8 +406,8 @@ class PaymentMethodSeeder extends Seeder
                             'href' => 'https://www.perfectorder.shop'
                         ],
                         'validation_rules' => [
-                            'required' => [true, "The GCash User ID is required"],
-                            'regex_pattern' => ['^[A-Za-z0-9]{6,20}$',"Enter a valid GCash User ID (6-20 alphanumeric characters)"]
+                            'required' => [true, 'The GCash User ID is required'],
+                            'regex_pattern' => ['^[A-Za-z0-9]{6,20}$','Enter a valid GCash User ID (6-20 alphanumeric characters)']
                         ],
                     ],
                     [
@@ -432,18 +429,13 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'eSewa',
                 'type' => PaymentMethodType::ESEWA,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'NP', // Nepal
-                    'IN', // India
-                    'BD', // Bangladesh
-                    'PK', // Pakistan
-                    'LK', // Sri Lanka
-                ],
+                'currencies' => ['NPR'],
+                'countries' => ['NP'],
                 'config_schema' => [
                     [
                         'type' => 'mobile_number',
                         'label' => 'Phone number',
-                        'attribute' => 'phone_number',
+                        'attribute' => 'phoneNumber',
                         'validation_rules' => $mobileNumberValidationRules('Phone number')
                     ],
                 ],
@@ -453,17 +445,19 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Venmo',
                 'type' => PaymentMethodType::VENMO,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'US' // United States
-                ],
+                'currencies' => ['USD'],
+                'countries' => ['US'],
                 'config_schema' => [
                     [
-                        'type' => 'url',
-                        'attribute' => 'url',
-                        'label' => 'Venmo username',
-                        'placeholder' => 'https://venmo.com/username',
+                        'type' => 'string',
+                        'attribute' => 'username',
+                        'label' =>'Venmo username',
+                        'placeholder' => 'username',
+                        'prefix' => 'https://venmo.com/',
                         'description' => 'Enter your Venmo username',
-                        'validation_rules' => $urlValidationRules('Venmo username', 'https://venmo.com/username')
+                        'validation_rules' => [
+                            'required' => [true, 'The Venmo username is required']
+                        ]
                     ],
                     [
                         'type' => 'content',
@@ -484,9 +478,8 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Zelle',
                 'type' => PaymentMethodType::ZELLE,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'US' // United States
-                ],
+                'currencies' => ['USD'],
+                'countries' => ['US'],
                 'config_schema' => [
                     [
                         'type' => 'email',
@@ -502,17 +495,19 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Ziina',
                 'type' => PaymentMethodType::ZIINA,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'AE' // United Arab Emirates
-                ],
+                'currencies' => ['AED'],
+                'countries' => ['AE'],
                 'config_schema' => [
                     [
-                        'type' => 'url',
-                        'attribute' => 'url',
-                        'label' => 'Ziina username',
-                        'placeholder' => 'https://pay.ziina.com/username',
+                        'type' => 'string',
+                        'attribute' => 'username',
+                        'label' =>'Ziina username',
+                        'placeholder' => 'username',
+                        'prefix' => 'https://pay.ziina.com/',
                         'description' => 'Enter your Ziina username',
-                        'validation_rules' => $urlValidationRules('Ziina username', 'https://pay.ziina.com/username')
+                        'validation_rules' => [
+                            'required' => [true, 'The Ziina username is required']
+                        ]
                     ],
                     [
                         'type' => 'content',
@@ -533,17 +528,23 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Kaspi',
                 'type' => PaymentMethodType::KASPI,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'KZ' // Kazakhstan
-                ],
+                'currencies' => [],
+                'countries' => ['KZ'],
+                'allowed_countries' => ['KZ'],
                 'config_schema' => [
                     [
-                        'type' => 'url',
+                        'type' => 'string',
                         'attribute' => 'url',
                         'label' => 'Kaspi payment link',
                         'placeholder' => 'https://pay.kaspi.kz/pay/xyzab40cd',
                         'description' => 'Enter your Kaspi payment link',
-                        'validation_rules' => $urlValidationRules('Kaspi payment link', 'https://pay.kaspi.kz/pay/xyzab40cd')
+                        'validation_rules' => [
+                            'required' => [true, 'The Kaspi is required'],
+                            'regex_pattern' => [
+                                '^https?:\/\/pay.kaspi.kz\/pay\/.+',
+                                'Enter a valid Kaspi, e.g https://pay.kaspi.kz/pay/xyzab40cd'
+                            ]
+                        ]
                     ],
                     [
                         'type' => 'content',
@@ -564,19 +565,13 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'M-Pesa',
                 'type' => PaymentMethodType::MPESA,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'KE', // Kenya
-                    'TZ', // Tanzania
-                    'UG', // Uganda
-                    'RW', // Rwanda
-                    'ZM', // Zambia
-                    'MZ'  // Mozambique
-                ],
+                'currencies' => ['KES', 'TZS', 'MZN', 'CDF', 'LSL'],
+                'countries' => ['KE', 'TZ', 'MZ', 'CD', 'LS'],
                 'config_schema' => [
                     [
                         'type' => 'select',
                         'label' => 'ID type',
-                        'attribute' => 'id_type',
+                        'attribute' => 'idType',
                         'default' => 'phone number',
                         'options' => [
                             ['label' => 'Phone number', 'value' => 'phone number'],
@@ -587,18 +582,18 @@ class PaymentMethodSeeder extends Seeder
                     [
                         'type' => 'mobile_number',
                         'label' => 'Phone number',
-                        'attribute' => 'phone_number',
-                        'condition' => ['id_type=phone number'],
+                        'attribute' => 'phoneNumber',
+                        'condition' => ['idType=phone number'],
                         'validation_rules' => $mobileNumberValidationRules('Phone number')
                     ],
                     [
                         'type' => 'string',
                         'label' => 'Till Number',
-                        'attribute' => 'till_number',
-                        'condition' => ['id_type=till number'],
+                        'attribute' => 'tillNumber',
+                        'condition' => ['idType=till number'],
                         'validation_rules' => [
-                            'required' => [true, "The Till Number is required"],
-                            'regex_pattern' => ['^\d{5,10}$', "Till Number must be between 5 and 10 digits"]
+                            'required' => [true, 'The Till Number is required'],
+                            'regex_pattern' => ['^\d{5,10}$', 'Till Number must be between 5 and 10 digits']
                         ]
                     ],
                 ],
@@ -608,15 +603,19 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'PayPal Me',
                 'type' => PaymentMethodType::PAYPAL_ME,
                 'automated_verification' => false,
-                'supported_countries' => null,
+                'currencies' => null,
+                'countries' => null,
                 'config_schema' => [
                     [
-                        'type' => 'url',
-                        'attribute' => 'url',
-                        'label' => 'Paypal.me username',
-                        'placeholder' => 'https://paypal.me/username',
+                        'type' => 'string',
+                        'attribute' => 'username',
+                        'placeholder' => 'username',
+                        'label' =>'Paypal.me username',
+                        'prefix' => 'https://paypal.me/',
                         'description' => 'Enter your Paypal.me username',
-                        'validation_rules' => $urlValidationRules('Paypal.me username', 'https://paypal.me/username')
+                        'validation_rules' => [
+                            'required' => [true, 'The Paypal.me username is required']
+                        ]
                     ],
                     [
                         'type' => 'content',
@@ -637,14 +636,13 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'PayNow',
                 'type' => PaymentMethodType::PAYNOW,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'SG', // Singapore
-                ],
+                'currencies' => ['SGD'],
+                'countries' => ['SG'],
                 'config_schema' => [
                     [
                         'type' => 'select',
                         'label' => 'ID type',
-                        'attribute' => 'id_type',
+                        'attribute' => 'idType',
                         'default' => 'phone number',
                         'options' => [
                             ['label' => 'Phone number', 'value' => 'phone number'],
@@ -656,28 +654,28 @@ class PaymentMethodSeeder extends Seeder
                     [
                         'type' => 'mobile_number',
                         'label' => 'Phone number',
-                        'attribute' => 'phone_number',
-                        'condition' => ['id_type=phone number'],
+                        'attribute' => 'phoneNumber',
+                        'condition' => ['idType=phone number'],
                         'validation_rules' => $mobileNumberValidationRules('Phone number')
                     ],
                     [
                         'type' => 'string',
                         'label' => 'UEN (Unique Entity Number)',
                         'attribute' => 'uen',
-                        'condition' => ['id_type=uen'],
+                        'condition' => ['idType=uen'],
                         'validation_rules' => [
-                            'required' => [true, "The UEN is required"],
-                            'regex_pattern' => ['^[0-9A-Z]{9,10}$', "UEN must be 9 or 10 alphanumeric characters"]
+                            'required' => [true, 'The UEN is required'],
+                            'regex_pattern' => ['^[0-9A-Z]{9,10}$', 'UEN must be 9 or 10 alphanumeric characters']
                         ]
                     ],
                     [
                         'type' => 'string',
                         'label' => 'VPA (Virtual Payment Address)',
                         'attribute' => 'vpa',
-                        'condition' => ['id_type=vpa'],
+                        'condition' => ['idType=vpa'],
                         'validation_rules' => [
-                            'required' => [true, "The VPA is required"],
-                            'regex_pattern' => ['^[a-zA-Z0-9_.-]+@[a-zA-Z0-9_.-]+$', "Enter a valid Virtual Payment Address (e.g., user@paynow)"]
+                            'required' => [true, 'The VPA is required'],
+                            'regex_pattern' => ['^[a-zA-Z0-9_.-]+@[a-zA-Z0-9_.-]+$', 'Enter a valid Virtual Payment Address (e.g., user@paynow)']
                         ]
                     ],
                 ],
@@ -687,18 +685,19 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'WigWag',
                 'type' => PaymentMethodType::WIGWAG,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'NG', // Nigeria
-                    'ZA', // South Africa
-                ],
+                'currencies' => ['ZAR'],
+                'countries' => ['ZA'],
                 'config_schema' => [
                     [
-                        'type' => 'url',
-                        'attribute' => 'url',
-                        'label' => 'WigWag username',
-                        'placeholder' => 'https://just.wigwag.me/username',
+                        'type' => 'string',
+                        'attribute' => 'username',
+                        'placeholder' => 'username',
+                        'label' =>'WigWag username',
+                        'prefix' => 'https://just.wigwag.me/',
                         'description' => 'Enter your WigWag username',
-                        'validation_rules' => $urlValidationRules('WigWag username', 'https://just.wigwag.me/username')
+                        'validation_rules' => [
+                            'required' => [true, 'The WigWag username is required']
+                        ]
                     ],
                     [
                         'type' => 'content',
@@ -719,12 +718,12 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Tikkie',
                 'type' => PaymentMethodType::TIKKIE,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'NL', // Netherlands
-                ],
+                'currencies' => ['EUR'],
+                'countries' => ['NL'],
+                'allowed_countries' => ['NL'],
                 'config_schema' => [
                     [
-                        'type' => 'url',
+                        'type' => 'string',
                         'attribute' => 'url',
                         'label' => 'Tikkie payment link',
                         'placeholder' => 'https://tikkie.me/pay/XXXXXXX',
@@ -750,26 +749,28 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Airtel',
                 'type' => PaymentMethodType::AIRTEL,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'CD', // Democratic Republic of Congo
-                    'CG', // Republic of Congo
-                    'GA', // Gabon
-                    'KE', // Kenya
-                    'MG', // Madagascar
-                    'MW', // Malawi
-                    'NE', // Niger
-                    'RW', // Rwanda
-                    'SC', // Seychelles
-                    'TD', // Chad
-                    'TZ', // Tanzania
-                    'UG', // Uganda
-                    'ZM', // Zambia
+                'currencies' => null,
+                'countries' => ['CD', 'CG', 'GA', 'KE', 'MG', 'MW', 'NE', 'RW', 'SC', 'TD', 'TZ', 'UG', 'ZM', 'NG'],
+                'allowed_countries' => ['CD', 'CG', 'GA', 'KE', 'MG', 'MW', 'NE', 'RW', 'SC', 'TD', 'TZ', 'UG', 'ZM', 'NG'],
+                'ussd_codes' => [
+                    'CG' => '*128#',
+                    'GA' => '*150#',
+                    'KE' => '*334#',
+                    'MG' => '*436#',
+                    'MW' => '*211#',
+                    'NE' => '*436#',
+                    'RW' => '*185#',
+                    'SC' => '*400#',
+                    'TD' => '*436#',
+                    'TZ' => '*150*60#',
+                    'UG' => '*185#',
+                    'ZM' => '*115#'
                 ],
                 'config_schema' => [
                     [
                         'type' => 'select',
                         'label' => 'ID type',
-                        'attribute' => 'id_type',
+                        'attribute' => 'idType',
                         'default' => 'phone number',
                         'options' => [
                             ['label' => 'Phone number', 'value' => 'phone number'],
@@ -780,22 +781,22 @@ class PaymentMethodSeeder extends Seeder
                     [
                         'type' => 'mobile_number',
                         'label' => 'Phone number',
-                        'attribute' => 'phone_number',
-                        'condition' => ['id_type=phone number'],
+                        'attribute' => 'phoneNumber',
+                        'condition' => ['idType=phone number'],
                         'validation_rules' => $mobileNumberValidationRules('Phone number')
                     ],
                     [
                         'type' => 'string',
                         'label' => 'Merchant code',
-                        'attribute' => 'merchant_code',
-                        'condition' => ['id_type=merchant code'],
+                        'attribute' => 'merchantCode',
+                        'condition' => ['idType=merchant code'],
                         'validation_rules' => $merchantCodeValidationRules()
                     ],
                     [
                         'type' => 'string',
                         'optional' => true,
                         'label' => 'Custom dial code',
-                        'attribute' => 'dial_code',
+                        'attribute' => 'dialCode',
                         'placeholder' => '*123*1*2#',
                         'description' => 'Customize with your own dial code. Include {amount} or {ref} to replace with order amount and reference - e.g *185*1*{amount}*ref#',
                         'description_info' => 'Include {amount} or {ref} to replace with order amount and reference - e.g *123*1*{amount}*{ref}#',
@@ -808,14 +809,18 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'EcoCash',
                 'type' => PaymentMethodType::ECOCASH,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'ZW', // Zimbabwe
+                'currencies' => null,
+                'countries' => ['ZW', 'LS'],
+                'allowed_countries' => ['ZW', 'LS'],
+                'ussd_codes' => [
+                    'ZW' => '*151#',
+                    'LS' => '*100#'
                 ],
                 'config_schema' => [
                     [
                         'type' => 'select',
                         'label' => 'ID type',
-                        'attribute' => 'id_type',
+                        'attribute' => 'idType',
                         'default' => 'phone number',
                         'options' => [
                             ['label' => 'Phone number', 'value' => 'phone number'],
@@ -826,22 +831,22 @@ class PaymentMethodSeeder extends Seeder
                     [
                         'type' => 'mobile_number',
                         'label' => 'Phone number',
-                        'attribute' => 'phone_number',
-                        'condition' => ['id_type=phone number'],
+                        'attribute' => 'phoneNumber',
+                        'condition' => ['idType=phone number'],
                         'validation_rules' => $mobileNumberValidationRules('Phone number')
                     ],
                     [
                         'type' => 'string',
                         'label' => 'Merchant code',
-                        'attribute' => 'merchant_code',
-                        'condition' => ['id_type=merchant code'],
+                        'attribute' => 'merchantCode',
+                        'condition' => ['idType=merchant code'],
                         'validation_rules' => $merchantCodeValidationRules()
                     ],
                     [
                         'type' => 'string',
                         'optional' => true,
                         'label' => 'Custom dial code',
-                        'attribute' => 'dial_code',
+                        'attribute' => 'dialCode',
                         'placeholder' => '*123*1*2#',
                         'description' => 'Customize with your own dial code. Include {amount} or {ref} to replace with order amount and reference - e.g *185*1*{amount}*ref#',
                         'description_info' => 'Include {amount} or {ref} to replace with order amount and reference - e.g *123*1*{amount}*{ref}#',
@@ -854,21 +859,27 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'iKhokha',
                 'type' => PaymentMethodType::IKHOKHA,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'ZA', // South Africa
-                ],
+                'currencies' => null,
+                'countries' => ['ZA'],
+                'allowed_countries' => ['ZA'],
                 'config_schema' => [
                     [
-                        'type' => 'url',
+                        'type' => 'string',
                         'attribute' => 'url',
                         'label' => 'iKhokha payment link',
-                        'placeholder' => 'https://pay.ikhokha.com/xxx/yyy/zzz',
                         'description' => 'Enter your iKhokha payment link',
+                        'placeholder' => 'https://pay.ikhokha.com/xxx/yyy/zzz',
                         'learn_more' => [
                             'label' => 'Learn more',
                             'href' => 'https://youtu.be/QWMOLDTjbZg?si=s7thBtpGlZasc5yK'
                         ],
-                        'validation_rules' => $urlValidationRules('iKhokha payment link', 'https://pay.ikhokha.com/xxx/yyy/zzz')
+                        'validation_rules' => [
+                            'required' => [true, 'The iKhokha payment link is required'],
+                            'regex_pattern' => [
+                                '^https:\/\/pay\.ikhokha\.com\/[\w-]+\/[\w-]+\/[\w-]+$',
+                                'Enter a valid Kaspi, e.g https://pay.ikhokha.com/xxx/yyy/zzz'
+                            ]
+                        ]
                     ],
                     [
                         'type' => 'content',
@@ -889,26 +900,19 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Revolut',
                 'type' => PaymentMethodType::REVOLUT,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'GB', // United Kingdom
-                    'DE', // Germany
-                    'FR', // France
-                    'ES', // Spain
-                    'IT', // Italy
-                    'US', // United States
-                    'AU', // Australia
-                    'SG', // Singapore
-                    'BR', // Brazil
-                    'JP', // Japan
-                ],
+                'currencies' => ['GBP', 'RON', 'EUR', 'PLN', 'USD', 'CHF', 'HUF', 'BGN', 'CZK', 'HRK', 'SEK', 'SGD', 'AUD', 'DKK', 'NOK', 'ISK', 'NZD', 'BRL', 'JPY', 'AMD', 'AZN', 'BDT', 'CLP', 'KZT', 'KWD', 'MOP', 'MKD', 'OMR', 'QAR', 'MDL', 'SAR', 'LKR', 'VND', 'GIP'],
+                'countries' => ['GB', 'RO', 'EU', 'PL', 'US', 'CH', 'HU', 'BG', 'CZ', 'HR', 'SE', 'SG', 'AU', 'DK', 'NO', 'IS', 'NZ', 'BR', 'JP', 'AM', 'AZ', 'BD', 'CL', 'KZ', 'KW', 'MO', 'MK', 'OM', 'QA', 'MD', 'SA', 'LK', 'VN', 'GI'],
                 'config_schema' => [
                     [
-                        'type' => 'url',
-                        'attribute' => 'url',
-                        'label' => 'Revolut ID',
-                        'placeholder' => 'https://revolut.me/username',
-                        'description' => 'Enter your Revolut ID',
-                        'validation_rules' => $urlValidationRules('Revolut ID', 'https://revolut.me/username')
+                        'type' => 'string',
+                        'attribute' => 'username',
+                        'placeholder' => 'username',
+                        'label' =>'Revolut username',
+                        'prefix' => 'https://revolut.me/',
+                        'description' => 'Enter your Revolut username',
+                        'validation_rules' => [
+                            'required' => [true, 'The Revolut username is required']
+                        ]
                     ],
                     [
                         'type' => 'content',
@@ -929,23 +933,20 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Pesapal',
                 'type' => PaymentMethodType::PESAPAL,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'KE', // Kenya
-                    'UG', // Uganda
-                    'TZ', // Tanzania
-                    'RW', // Rwanda
-                    'ZM', // Zambia
-                    'MW', // Malawi
-                    'ZW', // Zimbabwe
-                ],
+                'currencies' => null,
+                'countries' => ['KE', 'TZ', 'MW', 'RW', 'UG', 'ZM', 'ZW'],
+                'allowed_countries' => ['KE', 'TZ', 'MW', 'RW', 'UG', 'ZM', 'ZW'],
                 'config_schema' => [
                     [
-                        'type' => 'url',
-                        'attribute' => 'url',
-                        'label' => 'Pesapal username',
-                        'placeholder' => 'https://payments.pesapal.com/username',
+                        'type' => 'string',
+                        'attribute' => 'username',
+                        'placeholder' => 'username',
+                        'label' =>'Pesapal username',
+                        'prefix' => 'https://payments.pesapal.com/',
                         'description' => 'Enter your Pesapal username',
-                        'validation_rules' => $urlValidationRules('Pesapal username', 'https://payments.pesapal.com/username')
+                        'validation_rules' => [
+                            'required' => [true, 'The Pesapal username is required']
+                        ]
                     ],
                     [
                         'type' => 'content',
@@ -966,9 +967,8 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'DuitNow',
                 'type' => PaymentMethodType::DUITNOW,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'MY', // Malaysia
-                ],
+                'currencies' => ['MYR'],
+                'countries' => ['MY'],
                 'config_schema' => [
                     [
                         'type' => 'image',
@@ -976,10 +976,10 @@ class PaymentMethodSeeder extends Seeder
                         'label' => 'DuitNow QR code',
                         'description' => 'Upload your DuitNow QR code',
                         'validation_rules' => [
-                            'required' => [true, "The QR Code is required"],
-                            'qr_code' => ["The QRIS QR code is not valid"],
-                            'mime_types' => [['image/jpeg', 'image/jpg', 'image/png', 'image/gif'], "Only JPEG, JPG, PNG, and GIF formats are allowed"],
-                            'max_size' => [5 * 1024 * 1024, "Image size should not exceed 5MB"]
+                            'required' => [true, 'The QR Code is required'],
+                            'qr_code' => ['The DuitNow QR code is not valid'],
+                            'mime_types' => [['image/jpeg', 'image/jpg', 'image/png', 'image/gif'], 'Only JPEG, JPG, PNG, and GIF formats are allowed'],
+                            'max_size' => [5 * 1024 * 1024, 'Image size should not exceed 5MB']
                         ]
                     ]
                 ],
@@ -989,14 +989,17 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'MonCash',
                 'type' => PaymentMethodType::MONCASH,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'HT', // Haiti
+                'currencies' => null,
+                'countries' => ['HT'],
+                'allowed_countries' => ['HT'],
+                'ussd_codes' => [
+                    'HT' => '*202#'
                 ],
                 'config_schema' => [
                     [
                         'type' => 'select',
                         'label' => 'ID type',
-                        'attribute' => 'id_type',
+                        'attribute' => 'idType',
                         'default' => 'phone number',
                         'options' => [
                             ['label' => 'Phone number', 'value' => 'phone number'],
@@ -1007,22 +1010,22 @@ class PaymentMethodSeeder extends Seeder
                     [
                         'type' => 'mobile_number',
                         'label' => 'Phone number',
-                        'attribute' => 'phone_number',
-                        'condition' => ['id_type=phone number'],
+                        'attribute' => 'phoneNumber',
+                        'condition' => ['idType=phone number'],
                         'validation_rules' => $mobileNumberValidationRules('Phone number')
                     ],
                     [
                         'type' => 'string',
                         'label' => 'Merchant code',
-                        'attribute' => 'merchant_code',
-                        'condition' => ['id_type=merchant code'],
+                        'attribute' => 'merchantCode',
+                        'condition' => ['idType=merchant code'],
                         'validation_rules' => $merchantCodeValidationRules()
                     ],
                     [
                         'type' => 'string',
                         'optional' => true,
                         'label' => 'Custom dial code',
-                        'attribute' => 'dial_code',
+                        'attribute' => 'dialCode',
                         'placeholder' => '*123*1*2#',
                         'description' => 'Customize with your own dial code. Include {amount} or {ref} to replace with order amount and reference - e.g *185*1*{amount}*ref#',
                         'description_info' => 'Include {amount} or {ref} to replace with order amount and reference - e.g *123*1*{amount}*{ref}#',
@@ -1035,32 +1038,14 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'MTN MoMo',
                 'type' => PaymentMethodType::MTN_MOMO,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'CD', // Democratic Republic of Congo
-                    'CG', // Republic of Congo
-                    'GA', // Gabon
-                    'KE', // Kenya
-                    'MG', // Madagascar
-                    'MW', // Malawi
-                    'NE', // Niger
-                    'RW', // Rwanda
-                    'SC', // Seychelles
-                    'TD', // Chad
-                    'TZ', // Tanzania
-                    'UG', // Uganda
-                    'ZM', // Zambia
-                    'BJ', // Benin
-                    'CI', // Côte d'Ivoire (Ivory Coast)
-                    'CM', // Cameroon
-                    'GH', // Ghana
-                    'GN', // Guinea
-                    'LR', // Liberia
-                ],
+                'currencies' => null,
+                'countries' => ['CD', 'ET', 'GA', 'KE', 'MG', 'MZ', 'MW', 'SN', 'SL', 'TZ'],
+                'allowed_countries' => ['CD', 'ET', 'GA', 'KE', 'MG', 'MZ', 'MW', 'SN', 'SL', 'TZ'],
                 'config_schema' => [
                     [
                         'type' => 'select',
                         'label' => 'ID type',
-                        'attribute' => 'id_type',
+                        'attribute' => 'idType',
                         'default' => 'phone number',
                         'options' => [
                             ['label' => 'Phone number', 'value' => 'phone number'],
@@ -1071,22 +1056,22 @@ class PaymentMethodSeeder extends Seeder
                     [
                         'type' => 'mobile_number',
                         'label' => 'Phone number',
-                        'attribute' => 'phone_number',
-                        'condition' => ['id_type=phone number'],
+                        'attribute' => 'phoneNumber',
+                        'condition' => ['idType=phone number'],
                         'validation_rules' => $mobileNumberValidationRules('Phone number')
                     ],
                     [
                         'type' => 'string',
                         'label' => 'Merchant code',
-                        'attribute' => 'merchant_code',
-                        'condition' => ['id_type=merchant code'],
+                        'attribute' => 'merchantCode',
+                        'condition' => ['idType=merchant code'],
                         'validation_rules' => $merchantCodeValidationRules()
                     ],
                     [
                         'type' => 'string',
                         'optional' => true,
                         'label' => 'Custom dial code',
-                        'attribute' => 'dial_code',
+                        'attribute' => 'dialCode',
                         'placeholder' => '*123*1*2#',
                         'description' => 'Customize with your own dial code. Include {amount} or {ref} to replace with order amount and reference - e.g *185*1*{amount}*ref#',
                         'description_info' => 'Include {amount} or {ref} to replace with order amount and reference - e.g *123*1*{amount}*{ref}#',
@@ -1099,15 +1084,17 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Cellmoni',
                 'type' => PaymentMethodType::CELLMONI,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'CM', // Cameroon
-                    'PG', // Papua New Guinea
+                'currencies' => null,
+                'countries' => ['PG'],
+                'allowed_countries' => ['PG'],
+                'ussd_codes' => [
+                    'PG' => '*888#'
                 ],
                 'config_schema' => [
                     [
                         'type' => 'select',
                         'label' => 'ID type',
-                        'attribute' => 'id_type',
+                        'attribute' => 'idType',
                         'default' => 'phone number',
                         'options' => [
                             ['label' => 'Phone number', 'value' => 'phone number'],
@@ -1118,22 +1105,22 @@ class PaymentMethodSeeder extends Seeder
                     [
                         'type' => 'mobile_number',
                         'label' => 'Phone number',
-                        'attribute' => 'phone_number',
-                        'condition' => ['id_type=phone number'],
+                        'attribute' => 'phoneNumber',
+                        'condition' => ['idType=phone number'],
                         'validation_rules' => $mobileNumberValidationRules('Phone number')
                     ],
                     [
                         'type' => 'string',
                         'label' => 'Merchant code',
-                        'attribute' => 'merchant_code',
-                        'condition' => ['id_type=merchant code'],
+                        'attribute' => 'merchantCode',
+                        'condition' => ['idType=merchant code'],
                         'validation_rules' => $merchantCodeValidationRules()
                     ],
                     [
                         'type' => 'string',
                         'optional' => true,
                         'label' => 'Custom dial code',
-                        'attribute' => 'dial_code',
+                        'attribute' => 'dialCode',
                         'placeholder' => '*123*1*2#',
                         'description' => 'Customize with your own dial code. Include {amount} or {ref} to replace with order amount and reference - e.g *185*1*{amount}*ref#',
                         'description_info' => 'Include {amount} or {ref} to replace with order amount and reference - e.g *123*1*{amount}*{ref}#',
@@ -1146,15 +1133,17 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'TigoPesa',
                 'type' => PaymentMethodType::TIGOPESA,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'TZ', // Tanzania
-                    'ML', // Mali
+                'currencies' => null,
+                'countries' => ['TZ'],
+                'allowed_countries' => ['TZ'],
+                'ussd_codes' => [
+                    'TZ' => '*150*01#'
                 ],
                 'config_schema' => [
                     [
                         'type' => 'select',
                         'label' => 'ID type',
-                        'attribute' => 'id_type',
+                        'attribute' => 'idType',
                         'default' => 'phone number',
                         'options' => [
                             ['label' => 'Phone number', 'value' => 'phone number'],
@@ -1165,22 +1154,22 @@ class PaymentMethodSeeder extends Seeder
                     [
                         'type' => 'mobile_number',
                         'label' => 'Phone number',
-                        'attribute' => 'phone_number',
-                        'condition' => ['id_type=phone number'],
+                        'attribute' => 'phoneNumber',
+                        'condition' => ['idType=phone number'],
                         'validation_rules' => $mobileNumberValidationRules('Phone number')
                     ],
                     [
                         'type' => 'string',
                         'label' => 'Merchant code',
-                        'attribute' => 'merchant_code',
-                        'condition' => ['id_type=merchant code'],
+                        'attribute' => 'merchantCode',
+                        'condition' => ['idType=merchant code'],
                         'validation_rules' => $merchantCodeValidationRules()
                     ],
                     [
                         'type' => 'string',
                         'optional' => true,
                         'label' => 'Custom dial code',
-                        'attribute' => 'dial_code',
+                        'attribute' => 'dialCode',
                         'placeholder' => '*123*1*2#',
                         'description' => 'Customize with your own dial code. Include {amount} or {ref} to replace with order amount and reference - e.g *185*1*{amount}*ref#',
                         'description_info' => 'Include {amount} or {ref} to replace with order amount and reference - e.g *123*1*{amount}*{ref}#',
@@ -1193,14 +1182,17 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'InnBucks',
                 'type' => PaymentMethodType::INNBUCKS,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'ZW', // Zimbabwe
+                'currencies' => null,
+                'countries' => ['ZW'],
+                'allowed_countries' => ['ZW'],
+                'ussd_codes' => [
+                    'ZW' => '*569#'
                 ],
                 'config_schema' => [
                     [
                         'type' => 'select',
                         'label' => 'ID type',
-                        'attribute' => 'id_type',
+                        'attribute' => 'idType',
                         'default' => 'phone number',
                         'options' => [
                             ['label' => 'Phone number', 'value' => 'phone number'],
@@ -1211,22 +1203,22 @@ class PaymentMethodSeeder extends Seeder
                     [
                         'type' => 'mobile_number',
                         'label' => 'Phone number',
-                        'attribute' => 'phone_number',
-                        'condition' => ['id_type=phone number'],
+                        'attribute' => 'phoneNumber',
+                        'condition' => ['idType=phone number'],
                         'validation_rules' => $mobileNumberValidationRules('Phone number')
                     ],
                     [
                         'type' => 'string',
                         'label' => 'Merchant code',
-                        'attribute' => 'merchant_code',
-                        'condition' => ['id_type=merchant code'],
+                        'attribute' => 'merchantCode',
+                        'condition' => ['idType=merchant code'],
                         'validation_rules' => $merchantCodeValidationRules()
                     ],
                     [
                         'type' => 'string',
                         'optional' => true,
                         'label' => 'Custom dial code',
-                        'attribute' => 'dial_code',
+                        'attribute' => 'dialCode',
                         'placeholder' => '*123*1*2#',
                         'description' => 'Customize with your own dial code. Include {amount} or {ref} to replace with order amount and reference - e.g *185*1*{amount}*ref#',
                         'description_info' => 'Include {amount} or {ref} to replace with order amount and reference - e.g *123*1*{amount}*{ref}#',
@@ -1239,18 +1231,19 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Cash App',
                 'type' => PaymentMethodType::CASH_APP,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'US', // United States
-                    'GB', // United Kingdom
-                ],
+                'currencies' => ['USD', 'GBP'],
+                'countries' => ['US', 'GB'],
                 'config_schema' => [
                     [
-                        'type' => 'url',
-                        'attribute' => 'url',
-                        'label' => 'CashApp username',
-                        'placeholder' => 'https://cash.app/$username',
+                        'type' => 'string',
+                        'attribute' => 'username',
+                        'placeholder' => '$username',
+                        'label' =>'CashApp username',
+                        'prefix' => 'https://cash.app/',
                         'description' => 'Enter your CashApp username',
-                        'validation_rules' => $urlValidationRules('CashApp username', 'https://cash.app/$username')
+                        'validation_rules' => [
+                            'required' => [true, 'The CashApp username is required']
+                        ]
                     ],
                     [
                         'type' => 'content',
@@ -1271,14 +1264,13 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'PromptPay',
                 'type' => PaymentMethodType::PROMPTPAY,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'TH', // Thailand
-                ],
+                'currencies' => ['THB'],
+                'countries' => ['TH'],
                 'config_schema' => [
                     [
                         'type' => 'select',
                         'label' => 'ID type',
-                        'attribute' => 'id_type',
+                        'attribute' => 'idType',
                         'default' => 'phone number',
                         'options' => [
                             ['label' => 'Phone number', 'value' => 'phone number'],
@@ -1291,38 +1283,38 @@ class PaymentMethodSeeder extends Seeder
                     [
                         'type' => 'mobile_number',
                         'label' => 'Phone number',
-                        'attribute' => 'phone_number',
-                        'condition' => ['id_type=phone number'],
+                        'attribute' => 'phoneNumber',
+                        'condition' => ['idType=phone number'],
                         'validation_rules' => $mobileNumberValidationRules('Phone number')
                     ],
                     [
                         'type' => 'string',
                         'label' => 'National ID or Tax ID',
-                        'attribute' => 'national_id_or_tax_id',
-                        'condition' => ['id_type=national id or tax id'],
+                        'attribute' => 'nationalIdOrTaxId',
+                        'condition' => ['idType=national id or tax id'],
                         'validation_rules' => [
-                            'required' => [true, "The National ID or Tax ID is required"],
-                            'regex_pattern' => ['^\d{13}$', "The National ID or Tax ID must be exactly 13 digits"]
+                            'required' => [true, 'The National ID or Tax ID is required'],
+                            'regex_pattern' => ['^\d{13}$', 'The National ID or Tax ID must be exactly 13 digits']
                         ]
                     ],
                     [
                         'type' => 'string',
                         'label' => 'E-wallet ID',
-                        'attribute' => 'e_wallet_id',
-                        'condition' => ['id_type=e-wallet id'],
+                        'attribute' => 'eWalletID',
+                        'condition' => ['idType=e-wallet id'],
                         'validation_rules' => [
-                            'required' => [true, "The E-wallet ID is required"],
-                            'regex_pattern' => ['^\d{10,15}$', "The E-wallet ID must be between 10 to 15 digits"]
+                            'required' => [true, 'The E-wallet ID is required'],
+                            'regex_pattern' => ['^\d{10,15}$', 'The E-wallet ID must be between 10 to 15 digits']
                         ]
                     ],
                     [
                         'type' => 'string',
                         'label' => 'Bank Account Number',
-                        'attribute' => 'bank_account_number',
-                        'condition' => ['id_type=bank account number'],
+                        'attribute' => 'bankAccountNumber',
+                        'condition' => ['idType=bank account number'],
                         'validation_rules' => [
-                            'required' => [true, "The Bank Account Number is required"],
-                            'regex_pattern' => ['^\d{10,15}$', "The Bank Account Number must be between 10 to 15 digits"]
+                            'required' => [true, 'The Bank Account Number is required'],
+                            'regex_pattern' => ['^\d{10,15}$', 'The Bank Account Number must be between 10 to 15 digits']
                         ]
                     ],
                 ],
@@ -1332,16 +1324,15 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Touch n Go',
                 'type' => PaymentMethodType::TOUCH_N_GO,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'MY', // Malaysia
-                ],
+                'currencies' => ['MYR'],
+                'countries' => ['MY'],
                 'config_schema' => [
                     [
-                        'type' => 'url',
+                        'type' => 'string',
                         'attribute' => 'url',
                         'label' => 'Touch n Go payment link',
-                        'placeholder' => 'https://payment.tngdigital.com.my/sc/XXXXXXX',
                         'description' => 'Enter your TNG static payment link',
+                        'placeholder' => 'https://payment.tngdigital.com.my/sc/XXXXXXX',
                         'validation_rules' => $urlValidationRules('Touch n Go payment link', 'https://payment.tngdigital.com.my/sc/XXXXXXX')
                     ],
                     [
@@ -1363,20 +1354,12 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Mercado Pago',
                 'type' => PaymentMethodType::MERCADO_PAGO,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'AR', // Argentina
-                    'BR', // Brazil
-                    'MX', // Mexico
-                    'CL', // Chile
-                    'CO', // Colombia
-                    'UY', // Uruguay
-                    'PE', // Peru
-                    'BO', // Bolivia
-                    'PY', // Paraguay
-                ],
+                'currencies' => null,
+                'countries' => ['AR', 'BR', 'CL', 'CO', 'MX', 'UY', 'PE'],
+                'allowed_countries' => ['AR', 'BR', 'CL', 'CO', 'MX', 'UY', 'PE'],
                 'config_schema' => [
                     [
-                        'type' => 'url',
+                        'type' => 'string',
                         'attribute' => 'url',
                         'label' => 'Mercado Pago payment link',
                         'placeholder' => 'https://link.mercadopago.com.ar/username',
@@ -1402,55 +1385,27 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'SEPA Credit Transfer',
                 'type' => PaymentMethodType::SEPA,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'AT', // Austria
-                    'BE', // Belgium
-                    'BG', // Bulgaria
-                    'CY', // Cyprus
-                    'DE', // Germany
-                    'DK', // Denmark
-                    'EE', // Estonia
-                    'ES', // Spain
-                    'FI', // Finland
-                    'FR', // France
-                    'GR', // Greece
-                    'HR', // Croatia
-                    'HU', // Hungary
-                    'IE', // Ireland
-                    'IT', // Italy
-                    'LT', // Lithuania
-                    'LU', // Luxembourg
-                    'MT', // Malta
-                    'NL', // Netherlands
-                    'PL', // Poland
-                    'PT', // Portugal
-                    'RO', // Romania
-                    'SE', // Sweden
-                    'SI', // Slovenia
-                    'SK', // Slovakia
-                    'IS', // Iceland
-                    'LI', // Liechtenstein
-                    'NO', // Norway
-                ],
+                'currencies' => ['EUR'],
+                'countries' => ['AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR', 'HU', 'IS', 'IE', 'IT', 'LV', 'LI', 'LT', 'LU', 'MT', 'MC', 'NL', 'NO', 'PL', 'PT', 'RO', 'SM', 'SK', 'SI', 'ES', 'SE', 'CH', 'GB', 'AD', 'VA'],
                 'config_schema' => [
                     [
                         'type' => 'string',
                         'label' => 'Account holder name',
                         'placeholder' => 'John Doe',
-                        'attribute' => 'account_holder_name',
+                        'attribute' => 'accountHolderName',
                         'validation_rules' => [
-                            'required' => [true, "The Account Holder Name is required"],
-                            'regex_pattern' => ['^[a-zA-Z\s\-]+$', "The Account Holder Name must contain only letters, spaces, and hyphens"]
+                            'required' => [true, 'The Account Holder Name is required'],
+                            'regex_pattern' => ['^[a-zA-Z\s\-]+$', 'The Account Holder Name must contain only letters, spaces, and hyphens']
                         ]
                     ],
                     [
                         'type' => 'string',
                         'label' => 'Bank account number (IBAN)',
-                        'attribute' => 'bank_account_number',
+                        'attribute' => 'bankAccountNumber',
                         'placeholder' => 'DE44500105175407324931',
                         'validation_rules' => [
-                            'required' => [true, "The IBAN is required"],
-                            'regex_pattern' => ['^[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}$', "Enter a valid IBAN (e.g., DE44500105175407324931)"]
+                            'required' => [true, 'The IBAN is required'],
+                            'regex_pattern' => ['^[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}$', 'Enter a valid IBAN (e.g., DE44500105175407324931)']
                         ]
                     ],
                     [
@@ -1460,7 +1415,7 @@ class PaymentMethodSeeder extends Seeder
                         'attribute' => 'bic',
                         'placeholder' => 'DEUTDEFFXXX',
                         'validation_rules' => [
-                            'regex_pattern' => ['^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$', "Enter a valid BIC (e.g., DEUTDEFFXXX)"]
+                            'regex_pattern' => ['^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$', 'Enter a valid BIC (e.g., DEUTDEFFXXX)']
                         ]
                     ],
                 ],
@@ -1470,32 +1425,29 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Orange Money',
                 'type' => PaymentMethodType::ORANGE_MONEY,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'BW', // Botswana
-                    'BF', // Burkina Faso (under the Airtel Money brand)
-                    'CM', // Cameroon
-                    'CF', // Central African Republic
-                    'CD', // Democratic Republic of the Congo
-                    'CI', // Côte d'Ivoire
-                    'EG', // Egypt (branded as Orange Cash)
-                    'GN', // Guinea
-                    'GW', // Guinea-Bissau
-                    'JO', // Jordan
-                    'LR', // Liberia (under the Smile Money brand)
-                    'MG', // Madagascar
-                    'ML', // Mali
-                    'MA', // Morocco
-                    'NE', // Niger
-                    'SN', // Senegal
-                    'RO', // Romania
-                    'SL', // Sierra Leone (under the Airtel Money brand)
-                    'TN', // Tunisia
+                'currencies' => null,
+                'countries' => ['BF', 'BW', 'CD', 'CI', 'CM', 'GN', 'LR', 'MA', 'MG', 'ML', 'SN', 'SL', 'TN', 'EG', 'JO', 'CF', 'NE'],
+                'allowed_countries' => ['BF', 'BW', 'CD', 'CI', 'CM', 'GN', 'LR', 'MA', 'MG', 'ML', 'SN', 'SL', 'TN', 'EG', 'JO', 'CF', 'NE'],
+                'ussd_codes' => [
+                    'BF' => '*144#',
+                    'BW' => '*145#',
+                    'CD' => '*144#',
+                    'CI' => '#144#',
+                    'CM' => '#150#',
+                    'GN' => '#144#',
+                    'LR' => '*144#',
+                    'MA' => '#144#',
+                    'MG' => '#144#',
+                    'ML' => '#144#',
+                    'SN' => '#144#',
+                    'SL' => '#144#',
+                    'TN' => '*139#'
                 ],
                 'config_schema' => [
                     [
                         'type' => 'select',
                         'label' => 'ID type',
-                        'attribute' => 'id_type',
+                        'attribute' => 'idType',
                         'default' => 'phone number',
                         'options' => [
                             ['label' => 'Phone number', 'value' => 'phone number'],
@@ -1507,35 +1459,35 @@ class PaymentMethodSeeder extends Seeder
                     [
                         'type' => 'mobile_number',
                         'label' => 'Phone number',
-                        'attribute' => 'phone_number',
-                        'condition' => ['id_type=phone number'],
+                        'attribute' => 'phoneNumber',
+                        'condition' => ['idType=phone number'],
                         'validation_rules' => $mobileNumberValidationRules('Phone number')
                     ],
                     [
                         'type' => 'string',
                         'label' => 'Merchant code',
-                        'attribute' => 'merchant_code',
-                        'condition' => ['id_type=merchant code'],
+                        'attribute' => 'merchantCode',
+                        'condition' => ['idType=merchant code'],
                         'validation_rules' => $merchantCodeValidationRules()
                     ],
                     [
                         'type' => 'string',
                         'label' => 'Merchant code (QR)',
-                        'attribute' => 'merchant_code_qr',
-                        'condition' => ['id_type=merchant code qr'],
+                        'attribute' => 'merchantCodeQR',
+                        'condition' => ['idType=merchant code qr'],
                         'validation_rules' => [
-                            'required' => [true, "The Merchant Code QR is required"]
+                            'required' => [true, 'The Merchant Code QR is required']
                         ]
                     ],
                     [
                         'type' => 'string',
                         'optional' => true,
                         'label' => 'Custom dial code',
-                        'attribute' => 'dial_code',
+                        'attribute' => 'dialCode',
                         'placeholder' => '*123*1*2#',
                         'description' => 'Customize with your own dial code. Include {amount} or {ref} to replace with order amount and reference - e.g *185*1*{amount}*ref#',
                         'description_info' => 'Include {amount} or {ref} to replace with order amount and reference - e.g *123*1*{amount}*{ref}#',
-                        'condition' => ['id_type!=merchant code qr'],
+                        'condition' => ['idType!=merchant code qr'],
                         'validation_rules' => $customDialCodeValidationRules()
                     ],
                 ],
@@ -1545,14 +1497,13 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Instapay',
                 'type' => PaymentMethodType::Instapay,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'EG', // Egypt
-                ],
+                'currencies' => ['EGP'],
+                'countries' => ['EG'],
                 'config_schema' => [
                     [
                         'type' => 'select',
                         'label' => 'ID type',
-                        'attribute' => 'id_type',
+                        'attribute' => 'idType',
                         'default' => 'instapay payment link',
                         'options' => [
                             ['label' => 'Instapay payment link', 'value' => 'instapay payment link'],
@@ -1562,32 +1513,32 @@ class PaymentMethodSeeder extends Seeder
                         'validation_rules' => $selectValidationRules('ID type')
                     ],
                     [
-                        'type' => 'url',
+                        'type' => 'string',
                         'attribute' => 'url',
                         'label' => 'Instapay payment link',
                         'placeholder' => 'https://ipn.eg/S/xxx/instapay/yyy',
                         'description' => 'Enter your Instapay payment link',
-                        'condition' => ['id_type=instapay payment link'],
+                        'condition' => ['idType=instapay payment link'],
                         'validation_rules' => $urlValidationRules('Instapay payment link', 'https://ipn.eg/S/xxx/instapay/yyy')
                     ],
                     [
                         'type' => 'string',
-                        'attribute' => 'instapay_id',
+                        'attribute' => 'instapayID',
                         'label' => 'Instapay ID',
                         'placeholder' => 'xxxx@instapay',
                         'description' => 'Enter your Instapay payment address. This allows direct payments via Instapay.',
-                        'condition' => ['id_type=instapay id'],
+                        'condition' => ['idType=instapay id'],
                         'validation_rules' => [
-                            'required' => [true, "The Instapay ID is required"],
-                            'regex_pattern' => ['^[a-zA-Z0-9._%+-]+@instapay$', "Enter a valid Instapay ID (e.g., xxxx@instapay)"]
+                            'required' => [true, 'The Instapay ID is required'],
+                            'regex_pattern' => ['^[a-zA-Z0-9._%+-]+@instapay$', 'Enter a valid Instapay ID (e.g., xxxx@instapay)']
                         ]
                     ],
                     [
                         'type' => 'mobile_number',
                         'label' => 'Phone number',
-                        'attribute' => 'phone_number',
+                        'attribute' => 'phoneNumber',
                         'description' => 'Enter your registered phone number for Instapay.',
-                        'condition' => ['id_type=phone number'],
+                        'condition' => ['idType=phone number'],
                         'validation_rules' => $mobileNumberValidationRules('Phone number')
                     ],
                     [
@@ -1609,12 +1560,11 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'bKash',
                 'type' => PaymentMethodType::BKASH,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'BD', // Bangladesh (bKash's primary market)
-                ],
+                'countries' => ['BD'],
+                'currencies' => ['BDT'],
                 'config_schema' => [
                     [
-                        'type' => 'url',
+                        'type' => 'string',
                         'attribute' => 'url',
                         'label' => 'bKash payment link',
                         'placeholder' => 'https://shop.bkash.com/xxxx/paymentlink',
@@ -1644,16 +1594,14 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Wave',
                 'type' => PaymentMethodType::WAVE,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'CI', // Ivory Coast (Côte d'Ivoire)
-                    'SN', // Senegal
-                    'UG', // Uganda
-                ],
+                'currencies' => ['XOF'],
+                'countries' => ['CI', 'SN'],
+                'allowed_countries' => ['CI', 'SN'],
                 'config_schema' => [
                     [
                         'type' => 'select',
                         'label' => 'ID type',
-                        'attribute' => 'id_type',
+                        'attribute' => 'idType',
                         'default' => 'phone number',
                         'options' => [
                             ['label' => 'Phone number', 'value' => 'phone number'],
@@ -1664,18 +1612,18 @@ class PaymentMethodSeeder extends Seeder
                     [
                         'type' => 'mobile_number',
                         'label' => 'Phone number',
-                        'attribute' => 'phone_number',
+                        'attribute' => 'phoneNumber',
                         'description' => 'Enter your registered phone number for Wave.',
-                        'condition' => ['id_type=phone number'],
+                        'condition' => ['idType=phone number'],
                         'validation_rules' => $mobileNumberValidationRules('Phone number')
                     ],
                     [
-                        'type' => 'url',
+                        'type' => 'string',
                         'attribute' => 'url',
                         'label' => 'Wave payment link',
                         'placeholder' => 'https://pay.wave.com/xxx',
                         'description' => 'Enter your Wave payment link',
-                        'condition' => ['id_type=wave payment link'],
+                        'condition' => ['idType=wave payment link'],
                         'validation_rules' => $urlValidationRules('Wave payment link', 'https://pay.wave.com/xxx')
                     ],
                     [
@@ -1697,19 +1645,18 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'OXXO',
                 'type' => PaymentMethodType::OXXO,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'MX', // Mexico
-                ],
+                'currencies' => ['MXN'],
+                'countries' => ['MX'],
                 'config_schema' => [
                     [
                         'type' => 'string',
                         'label' => 'OXXO account number',
-                        'attribute' => 'oxxo_account_number',
+                        'attribute' => 'oxxoAccountNumber',
                         'placeholder' => '2422123456789012',
                         'description' => 'Enter your OXXO account number',
                         'validation_rules' => [
-                            'required' => [true, "The OXXO account number is required"],
-                            'regex_pattern' => ['^\d{16}$', "OXXO account number must be exactly 16 digits"]
+                            'required' => [true, 'The OXXO account number is required'],
+                            'regex_pattern' => ['^\d{16}$', 'OXXO account number must be exactly 16 digits']
                         ]
                     ],
                     [
@@ -1731,16 +1678,15 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Snapscan',
                 'type' => PaymentMethodType::SNAPSCAN,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'ZA', // South Africa
-                ],
+                'countries' => ['ZA'],
+                'currencies' => ['ZAR'],
                 'config_schema' => [
                     [
-                        'type' => 'url',
+                        'type' => 'string',
                         'attribute' => 'url',
                         'label' => 'Snapscan payment link',
-                        'placeholder' => 'https://pos.snapscan.io/qr/ABCD0123',
                         'description' => 'Enter your Snapscan URL',
+                        'placeholder' => 'https://pos.snapscan.io/qr/ABCD0123',
                         'validation_rules' => $urlValidationRules('Snapscan payment link', 'https://pos.snapscan.io/qr/ABCD0123')
                     ],
                     [
@@ -1762,14 +1708,14 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'MB Way',
                 'type' => PaymentMethodType::MBWAY,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'PT', // Portugal
-                ],
+                'currencies' => ['EUR'],
+                'countries' => ['PT'],
+                'allowed_countries' => ['PT'],
                 'config_schema' => [
                     [
                         'type' => 'mobile_number',
                         'label' => 'Phone number',
-                        'attribute' => 'phone_number',
+                        'attribute' => 'phoneNumber',
                         'validation_rules' => $mobileNumberValidationRules('Phone number')
                     ],
                 ],
@@ -1779,14 +1725,13 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'MCB Juice',
                 'type' => PaymentMethodType::MCBJUICE,
                 'automated_verification' => false,
-                'supported_countries' => [
-                    'MU', // Mauritius
-                ],
+                'currencies' => ['MUR'],
+                'countries' => ['MU'],
                 'config_schema' => [
                     [
                         'type' => 'select',
                         'label' => 'ID type',
-                        'attribute' => 'id_type',
+                        'attribute' => 'idType',
                         'default' => 'phone number',
                         'options' => [
                             ['label' => 'Phone number', 'value' => 'phone number'],
@@ -1797,18 +1742,18 @@ class PaymentMethodSeeder extends Seeder
                     [
                         'type' => 'mobile_number',
                         'label' => 'Phone number',
-                        'attribute' => 'phone_number',
-                        'condition' => ['id_type=phone number'],
+                        'attribute' => 'phoneNumber',
+                        'condition' => ['idType=phone number'],
                         'validation_rules' => $mobileNumberValidationRules('Phone number')
                     ],
                     [
                         'type' => 'string',
                         'label' => 'MCB account number',
-                        'attribute' => 'mcb_account_number',
-                        'condition' => ['id_type=mcb account number'],
+                        'attribute' => 'mcbAccountNumber',
+                        'condition' => ['idType=mcb account number'],
                         'validation_rules' => [
-                            'required' => [true, "The MCB account number is required"],
-                            'regex_pattern' => ['^\d{12}$', "MCB account number must be exactly 12 digits"]
+                            'required' => [true, 'The MCB account number is required'],
+                            'regex_pattern' => ['^\d{12}$', 'MCB account number must be exactly 12 digits']
                         ]
                     ],
                 ],
@@ -1818,7 +1763,8 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Bank Transfer',
                 'type' => PaymentMethodType::BANK_TRANSFER,
                 'automated_verification' => false,
-                'supported_countries' => null,
+                'currencies' => null,
+                'countries' => null,
                 'config_schema' => [
                     [
                         'type' => 'content',
@@ -1832,10 +1778,10 @@ class PaymentMethodSeeder extends Seeder
                         'type' => 'string',
                         'label' => 'Account Number',
                         'placeholder' => '123456789012 (or IBAN)',
-                        'attribute' => 'account_number',
+                        'attribute' => 'accountNumber',
                         'validation_rules' => [
-                            'required' => [true, "The Account Number is required"],
-                            'regex_pattern' => ['^[A-Za-z0-9]{8,34}$', "Enter a valid account number (IBAN or standard format)"]
+                            'required' => [true, 'The Account Number is required'],
+                            'regex_pattern' => ['^[A-Za-z0-9]{8,34}$', 'Enter a valid account number (IBAN or standard format)']
                         ]
                     ],
                     [
@@ -1843,9 +1789,9 @@ class PaymentMethodSeeder extends Seeder
                         'optional' => true,
                         'label' => 'Account Holder Name',
                         'placeholder' => 'John Doe',
-                        'attribute' => 'account_holder_name',
+                        'attribute' => 'accountHolderName',
                         'validation_rules' => [
-                            'regex_pattern' => ['^[a-zA-Z\s]{2,50}$', "Enter a valid account holder name (only letters and spaces, 2-50 characters)"]
+                            'regex_pattern' => ['^[a-zA-Z\s]{2,50}$', 'Enter a valid account holder name (only letters and spaces, 2-50 characters)']
                         ]
                     ],
                     [
@@ -1853,29 +1799,29 @@ class PaymentMethodSeeder extends Seeder
                         'optional' => true,
                         'label' => 'Bank Name',
                         'placeholder' => 'Bank of America, HSBC, etc.',
-                        'attribute' => 'bank_name',
+                        'attribute' => 'bankName',
                         'validation_rules' => [
-                            'regex_pattern' => ['^[a-zA-Z\s&]{2,100}$', "Enter a valid bank name (letters, spaces, & allowed, 2-100 characters)"]
+                            'regex_pattern' => ['^[a-zA-Z\s&]{2,100}$', 'Enter a valid bank name (letters, spaces, & allowed, 2-100 characters)']
                         ]
                     ],
                     [
                         'type' => 'string',
                         'optional' => true,
                         'label' => 'SWIFT or Bank Code',
+                        'attribute' => 'swiftOrBankCode',
                         'placeholder' => 'CHASUS33 (US), HSBCGB2L (UK), etc.',
-                        'attribute' => 'bank_code',
                         'validation_rules' => [
-                            'regex_pattern' => ['^[A-Za-z0-9]{6,11}$', "Enter a valid SWIFT or bank code (6-11 alphanumeric characters)"]
+                            'regex_pattern' => ['^[A-Za-z0-9]{6,11}$', 'Enter a valid SWIFT or bank code (6-11 alphanumeric characters)']
                         ]
                     ],
                     [
                         'type' => 'string',
                         'optional' => true,
+                        'attribute' => 'branchCodeOrSortCode',
                         'label' => 'Branch Code or Sort Code',
-                        'description' => '',
                         'placeholder' => '1234 (US), 12-34-56 (UK Sort Code), etc.',
                         'validation_rules' => [
-                            'regex_pattern' => ['^[0-9-]{4,10}$', "Enter a valid branch code (numeric, with optional dashes, 4-10 characters)"]
+                            'regex_pattern' => ['^[0-9-]{4,10}$', 'Enter a valid branch code (numeric, with optional dashes, 4-10 characters)']
                         ]
                     ],
                     [
@@ -1885,8 +1831,8 @@ class PaymentMethodSeeder extends Seeder
                         'label' => 'Image',
                         'description' => 'Upload supporting image',
                         'validation_rules' => [
-                            'mime_types' => [['image/jpeg', 'image/jpg', 'image/png', 'image/gif'], "Only JPEG, JPG, PNG, and GIF formats are allowed"],
-                            'max_size' => [5 * 1024 * 1024, "Image size should not exceed 5MB"]
+                            'mime_types' => [['image/jpeg', 'image/jpg', 'image/png', 'image/gif'], 'Only JPEG, JPG, PNG, and GIF formats are allowed'],
+                            'max_size' => [5 * 1024 * 1024, 'Image size should not exceed 5MB']
                         ]
                     ]
                 ]
@@ -1896,7 +1842,8 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Cash On Delivery',
                 'type' => PaymentMethodType::CASH_ON_DELIVERY,
                 'automated_verification' => false,
-                'supported_countries' => null, // Global
+                'currencies' => null,
+                'countries' => null,
                 'config_schema' => [
                     [
                         'type' => 'image',
@@ -1905,8 +1852,8 @@ class PaymentMethodSeeder extends Seeder
                         'label' => 'Image',
                         'description' => 'Upload supporting image',
                         'validation_rules' => [
-                            'mime_types' => [['image/jpeg', 'image/jpg', 'image/png', 'image/gif'], "Only JPEG, JPG, PNG, and GIF formats are allowed"],
-                            'max_size' => [5 * 1024 * 1024, "Image size should not exceed 5MB"]
+                            'mime_types' => [['image/jpeg', 'image/jpg', 'image/png', 'image/gif'], 'Only JPEG, JPG, PNG, and GIF formats are allowed'],
+                            'max_size' => [5 * 1024 * 1024, 'Image size should not exceed 5MB']
                         ]
                     ]
                 ]
@@ -1916,7 +1863,8 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Store Credit',
                 'type' => PaymentMethodType::STORE_CREDIT,
                 'automated_verification' => false,
-                'supported_countries' => null, // Global
+                'currencies' => null,
+                'countries' => null,
                 'config_schema' => [
                     [
                         'type' => 'image',
@@ -1925,8 +1873,8 @@ class PaymentMethodSeeder extends Seeder
                         'label' => 'Image',
                         'description' => 'Upload supporting image',
                         'validation_rules' => [
-                            'mime_types' => [['image/jpeg', 'image/jpg', 'image/png', 'image/gif'], "Only JPEG, JPG, PNG, and GIF formats are allowed"],
-                            'max_size' => [5 * 1024 * 1024, "Image size should not exceed 5MB"]
+                            'mime_types' => [['image/jpeg', 'image/jpg', 'image/png', 'image/gif'], 'Only JPEG, JPG, PNG, and GIF formats are allowed'],
+                            'max_size' => [5 * 1024 * 1024, 'Image size should not exceed 5MB']
                         ]
                     ]
                 ]
@@ -1936,8 +1884,18 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Other Payment',
                 'type' => PaymentMethodType::OTHER,
                 'automated_verification' => false,
-                'supported_countries' => null, // Global
+                'currencies' => null,
+                'countries' => null,
                 'config_schema' => [
+                    [
+                        'type' => 'string',
+                        'optional' => true,
+                        'label' =>'Payment Link',
+                        'attribute' => 'paymentLink',
+                        'placeholder' => 'https://example.com/pay',
+                        'description' => 'Customize your payment link. Include {amount} or {ref} to replace with order amount and reference - e.g https://example.com/pay?amount={amount}&ref={ref}',
+                        'description_info' => 'Include {amount} or {ref} to replace with order amount and reference - e.g https://example.com/pay?amount={amount}&ref={ref}'
+                    ],
                     [
                         'type' => 'image',
                         'optional' => true,
@@ -1945,8 +1903,8 @@ class PaymentMethodSeeder extends Seeder
                         'label' => 'Logo',
                         'description' => 'Upload logo',
                         'validation_rules' => [
-                            'mime_types' => [['image/jpeg', 'image/jpg', 'image/png', 'image/gif'], "Only JPEG, JPG, PNG, and GIF formats are allowed"],
-                            'max_size' => [5 * 1024 * 1024, "Image size should not exceed 5MB"]
+                            'mime_types' => [['image/jpeg', 'image/jpg', 'image/png', 'image/gif'], 'Only JPEG, JPG, PNG, and GIF formats are allowed'],
+                            'max_size' => [5 * 1024 * 1024, 'Image size should not exceed 5MB']
                         ]
                     ],
                     [
@@ -1956,8 +1914,8 @@ class PaymentMethodSeeder extends Seeder
                         'label' => 'Image',
                         'description' => 'Upload supporting image',
                         'validation_rules' => [
-                            'mime_types' => [['image/jpeg', 'image/jpg', 'image/png', 'image/gif'], "Only JPEG, JPG, PNG, and GIF formats are allowed"],
-                            'max_size' => [5 * 1024 * 1024, "Image size should not exceed 5MB"]
+                            'mime_types' => [['image/jpeg', 'image/jpg', 'image/png', 'image/gif'], 'Only JPEG, JPG, PNG, and GIF formats are allowed'],
+                            'max_size' => [5 * 1024 * 1024, 'Image size should not exceed 5MB']
                         ]
                     ]
                 ]
@@ -1970,7 +1928,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'DPO (Direct Pay Online)',
                 'type' => PaymentMethodType::DPO,
                 'automated_verification' => true,
-                'supported_countries' => [
+                'countries' => [
                     'BW', // Botswana
                     'BF', // Burkina Faso
                     'BI', // Burundi

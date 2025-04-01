@@ -37,8 +37,8 @@ class CreateStoresTable extends Migration
             $table->char('country', 2)->default(config('app.DEFAULT_COUNTRY'));
             $table->char('currency', 3)->default(config('app.DEFAULT_CURRENCY'));
             $table->char('language', 2)->default(config('app.DEFAULT_LANGUAGE'));
-            $table->enum('distance_unit', Store::DISTANCE_UNIT_OPTIONS())->default(DistanceUnit::KM);
-            $table->enum('tax_method', Store::TAX_METHOD_OPTIONS())->default(TaxMethod::INCLUSIVE);
+            $table->enum('distance_unit', Store::DISTANCE_UNIT_OPTIONS())->default(DistanceUnit::KM->value);
+            $table->enum('tax_method', Store::TAX_METHOD_OPTIONS())->default(TaxMethod::INCLUSIVE->value);
             $table->decimal('tax_percentage_rate', 5, 2)->default(0);
             $table->string('tax_id', Store::TAX_ID_MAX_CHARACTERS)->nullable();
             $table->boolean('show_opening_hours')->default(false);
@@ -55,7 +55,7 @@ class CreateStoresTable extends Migration
             /*  Delivery Settings  */
             $table->boolean('allow_delivery')->default(false);
             $table->boolean('allow_free_delivery')->default(false);
-            $table->decimal('delivery_flat_fee', 10, 2)->default(0);
+            $table->decimal('delivery_flat_fee', 12, 3)->default(0);
             $table->string('delivery_note', Store::DELIVERY_NOTE_MAX_CHARACTERS)->nullable();
             $table->json('delivery_destinations')->nullable();
 

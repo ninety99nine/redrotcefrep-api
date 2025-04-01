@@ -3,6 +3,7 @@
 namespace App\Casts;
 
 use App\Traits\Base\BaseTrait;
+use App\Services\Money\MoneyService;
 use Illuminate\Contracts\Database\Eloquent\CastsAttributes;
 
 class Money implements CastsAttributes
@@ -20,7 +21,7 @@ class Money implements CastsAttributes
      */
     public function get($model, $key, $value, $attributes)
     {
-        return $this->convertToMoneyFormat($value, $attributes['currency']);
+        return MoneyService::convertToMoneyFormat($value, $attributes['currency']);
     }
 
     /**

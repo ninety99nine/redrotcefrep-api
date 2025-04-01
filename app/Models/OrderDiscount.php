@@ -18,7 +18,7 @@ class OrderDiscount extends BaseModel
     ];
 
     protected $fillable = [
-        'name', 'amount', 'order_id', 'store_id'
+        'name', 'amount', 'currency', 'order_id', 'store_id'
     ];
 
     public function order()

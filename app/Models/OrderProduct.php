@@ -8,6 +8,7 @@ use App\Casts\Currency;
 use App\Casts\Percentage;
 use App\Casts\JsonToArray;
 use App\Traits\ItemLineTrait;
+use App\Enums\RequestFileName;
 use App\Models\Base\BaseModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
@@ -99,6 +100,18 @@ class OrderProduct extends BaseModel
      *  RELATIONSHIPS           *
      ***************************/
 
+    public function photo()
+    {
+        return $this->hasOneThrough(
+            MediaFile::class,  // The target model (photo)
+            Product::class,    // The intermediate model (product)
+            'id',              // Foreign key on the Product table (order_products.product_id = products.id)
+            'mediable_id',     // Foreign key on the MediaFile table (photos.mediable_id = products.id)
+            'product_id',      // Foreign key on the OrderProduct table (order_products.product_id)
+            'id'               // Primary key on the Product table
+        )->where('type', RequestFileName::PRODUCT_PHOTO->value);
+    }
+
     /**
      *  Returns the associated product
      */
@@ -114,5 +127,7 @@ class OrderProduct extends BaseModel
     {
         return $this->belongsTo(Store::class);
     }
+
+
 
 }

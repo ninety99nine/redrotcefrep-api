@@ -2,13 +2,10 @@
 
 namespace App\Traits\Base;
 
-use App\Enums\ReturnType;
-use stdClass;
-use Exception;
 use Carbon\Carbon;
+use App\Enums\ReturnType;
 use Illuminate\Support\Str;
 use App\Services\Country\CountryService;
-use App\Services\Currency\CurrencyService;
 
 trait BaseTrait
 {
@@ -29,44 +26,12 @@ trait BaseTrait
 
     public function convertToPercentageFormat($value)
     {
-        $roundedValue = (float) $value;
+        $roundedValue = (float) ($value ?? 0);
 
         return [
             'value' => $roundedValue,
             'value_symbol' => $roundedValue . '%',
         ];
-    }
-
-    public function convertToMoneyFormat($value = 0, $code = null)
-    {
-        try {
-
-            $currency = (new CurrencyService)->findCurrencyByCode($code);
-
-            if($currency) {
-                $symbol = empty($currency['symbol']) ? $currency['code'] : $currency['symbol'];
-            }else{
-                $symbol = '';
-            }
-
-            //  Convert value to money format
-            $money = number_format($value, 2, '.', ',');
-
-            //  Convert value to float
-            $amount = (float) $value;
-
-            $obj = new stdClass();
-            $obj->amount = $amount;
-            $obj->amountWithoutCurrency = $money;
-            $obj->amountWithCurrency = $symbol . $money;
-
-            return $obj;
-
-        } catch (\Exception $e) {
-
-            throw new Exception('Failed to convert money to money format');
-
-        }
     }
 
     public function convertNumberToShortenedPrefix($number)

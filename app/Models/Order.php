@@ -14,6 +14,7 @@ use App\Models\Base\BaseModel;
 use App\Casts\OrderPaymentStatus;
 use App\Services\Ussd\UssdService;
 use App\Casts\E164PhoneNumberCast;
+use App\Services\Money\MoneyService;
 use App\Enums\OrderCancellationReason;
 use App\Enums\OrderStatus as EnumsOrderStatus;
 use App\Models\Pivots\UserOrderViewAssociation;
@@ -56,8 +57,8 @@ class Order extends BaseModel
     /**
      *  Magic Numbers
      */
-    const STORE_NOTE_MIN_CHARACTERS = 3;
-    const STORE_NOTE_MAX_CHARACTERS = 1000;
+    const INTERNAL_NOTE_MIN_CHARACTERS = 3;
+    const INTERNAL_NOTE_MAX_CHARACTERS = 1000;
     const CUSTOMER_NOTE_MIN_CHARACTERS = 3;
     const CUSTOMER_NOTE_MAX_CHARACTERS = 400;
     const COLLECTION_NOTE_MIN_CHARACTERS = 3;
@@ -76,6 +77,7 @@ class Order extends BaseModel
         'grand_total' => Money::class,
         'pending_total' => Money::class,
         'discount_total' => Money::class,
+        'adjustment_total' => Money::class,
         'collection_verified' => 'boolean',
         'outstanding_total' => Money::class,
         'applied_promotion_code' => 'boolean',
@@ -103,7 +105,7 @@ class Order extends BaseModel
 
         /* General Information */
         'summary', 'status', 'currency', 'subtotal', 'discount_total', 'subtotal_after_discount',
-        'vat_method', 'vat_rate', 'vat_amount', 'fee_total', 'grand_total',
+        'vat_method', 'vat_rate', 'vat_amount', 'fee_total', 'adjustment_total', 'grand_total',
 
         /* Payment Information */
         'payment_status', 'paid_total', 'paid_percentage', 'pending_total', 'pending_percentage',
@@ -122,6 +124,7 @@ class Order extends BaseModel
         'delivery_method_name', 'delivery_distance_value', 'delivery_distance_unit', 'delivery_distance_text',
         'delivery_duration_value', 'delivery_duration_text', 'delivery_weight_value', 'delivery_weight_unit',
         'delivery_weight_text', 'free_delivery', 'delivery_date', 'delivery_timeslot', 'delivery_method_id',
+        'courier_id', 'tracking_number',
 
         /* Collection Verification */
         'collection_code', 'collection_qr_code', 'collection_code_expires_at', 'collection_verified',
@@ -138,7 +141,7 @@ class Order extends BaseModel
         'total_views_by_team', 'first_viewed_by_team_at', 'last_viewed_by_team_at',
 
         /* Notes */
-        'store_note',
+        'internal_note', 'remark',
 
         /* Other Relationships */
         'assigned_to_user_id', 'created_by_user_id', 'store_id', 'occasion_id', 'friend_group_id',
@@ -471,7 +474,7 @@ class Order extends BaseModel
                     'name' => $name,
                     'type' => $type,
                     'percentage' => (int) $percentage,
-                    'amount' => $this->convertToMoneyFormat($this->getRawOriginal('grand_total') * $percentage / 100, $this->getRawOriginal('currency'))
+                    'amount' => MoneyService::convertToMoneyFormat($this->getRawOriginal('grand_total') * $percentage / 100, $this->getRawOriginal('currency'))
                 ];
 
                 //  Get deposit options

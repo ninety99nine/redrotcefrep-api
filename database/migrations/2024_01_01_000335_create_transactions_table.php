@@ -27,7 +27,7 @@ class CreateTransactionsTable extends Migration
 
             /*  Amount Information  */
             $table->char('currency', 3)->default(config('app.DEFAULT_CURRENCY'));
-            $table->decimal('amount', 10, 2)->default(0);
+            $table->decimal('amount', 12, 3)->default(0);
             $table->unsignedTinyInteger('percentage')->default(100);
 
             /*  Metadata Information  */

@@ -66,7 +66,6 @@ class JsonToArray implements CastsAttributes
     {
         if(is_array($value)) {
 
-
             /**
              *  Json encode the data to convert array to json string
              *

@@ -19,7 +19,7 @@ class CreateOrderDiscountsTable extends Migration
             $table->uuid('id')->primary();
             $table->string('name', OrderDiscount::NAME_MAX_CHARACTERS);
             $table->char('currency', 3)->default(config('app.DEFAULT_CURRENCY'));
-            $table->decimal('amount', 10, 2)->default(0);
+            $table->decimal('amount', 12, 3)->default(0);
             $table->foreignUuid('order_id');
             $table->foreignUuid('store_id');
 
@@ -29,7 +29,7 @@ class CreateOrderDiscountsTable extends Migration
             /* Foreign Key Constraints */
             $table->foreign('order_id')->references('id')->on('orders')->cascadeOnDelete();
             $table->foreign('store_id')->references('id')->on('stores')->cascadeOnDelete();
-            
+
         });
     }
 

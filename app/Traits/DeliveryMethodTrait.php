@@ -188,27 +188,14 @@ trait DeliveryMethodTrait
             return [];
         }
 
-        // Helper: Convert time into minutes since midnight
-        $timeToMinutes = function ($time) {
-            list($hours, $minutes) = explode(':', $time);
-            return $hours * 60 + $minutes;
-        };
-
-        // Helper: Convert minutes back to a readable time format
-        $minutesToTime = function ($minutes) {
-            $hours = str_pad(floor($minutes / 60), 2, '0', STR_PAD_LEFT);
-            $mins = str_pad($minutes % 60, 2, '0', STR_PAD_LEFT);
-            return "$hours:$mins";
-        };
-
         // Create a Set to store unique timeslots
         $uniqueTimeSlots = [];
 
         // Iterate over the operational hours for the chosen day
         foreach ($operationalHours['hours'] as $range) {
             list($startTime, $endTime) = $range;
-            $startTimeInMinutes = $timeToMinutes($startTime);
-            $endTimeInMinutes = $timeToMinutes($endTime);
+            $startTimeInMinutes = $this->timeToMinutesFormat($startTime);
+            $endTimeInMinutes = $this->timeToMinutesFormat($endTime);
 
             // Generate timeslots based on the configuration
             if ($this->auto_generate_time_slots) {
@@ -218,13 +205,13 @@ trait DeliveryMethodTrait
 
                 for ($currentStartTimeInMinutes = $startTimeInMinutes; $currentStartTimeInMinutes + $interval <= $endTimeInMinutes; $currentStartTimeInMinutes += $interval) {
                     $currentEndTimeInMinutes = $currentStartTimeInMinutes + $interval;
-                    $currentStartTime = $minutesToTime($currentStartTimeInMinutes);
+                    $currentStartTime = $this->minutesToTimeFormat($currentStartTimeInMinutes);
 
                     $isLastItem = $currentStartTimeInMinutes + $interval >= $endTimeInMinutes;
 
                     $currentEndTime = $isLastItem
-                        ? $minutesToTime($currentEndTimeInMinutes)
-                        : $minutesToTime($currentEndTimeInMinutes - 1);
+                        ? $this->minutesToTimeFormat($currentEndTimeInMinutes)
+                        : $this->minutesToTimeFormat($currentEndTimeInMinutes - 1);
 
                     $endAt = $selectedDate->copy()->setTimeFromTimeString($currentEndTime);
 
@@ -271,6 +258,59 @@ trait DeliveryMethodTrait
     }
 
     /**
+     * Get all time slots for a selected date, ignoring restrictions.
+     *
+     * @param string $date
+     * @return array
+     */
+    public function allTimeSlots(string $date): array
+    {
+        $selectedDate = Carbon::parse($date);
+        $dayOfWeek = $selectedDate->dayOfWeek;
+        $operationalHours = $this->operational_hours[$dayOfWeek];
+
+        // Return an empty array if there are no operational hours
+        if (empty($operationalHours['hours'])) {
+            return [];
+        }
+
+        // Store all possible time slots
+        $allTimeSlots = [];
+
+        foreach ($operationalHours['hours'] as $range) {
+            list($startTime, $endTime) = $range;
+            $startTimeInMinutes = $this->timeToMinutesFormat($startTime);
+            $endTimeInMinutes = $this->timeToMinutesFormat($endTime);
+
+            if ($this->auto_generate_time_slots) {
+                $interval = $this->time_slot_interval_unit == 'hour'
+                    ? $this->time_slot_interval_value * 60
+                    : $this->time_slot_interval_value;
+
+                for ($currentStartTimeInMinutes = $startTimeInMinutes; $currentStartTimeInMinutes + $interval <= $endTimeInMinutes; $currentStartTimeInMinutes += $interval) {
+                    $currentEndTimeInMinutes = $currentStartTimeInMinutes + $interval;
+                    $currentStartTime = $this->minutesToTimeFormat($currentStartTimeInMinutes);
+                    $currentEndTime = $this->minutesToTimeFormat($currentEndTimeInMinutes);
+
+                    $allTimeSlots[] = "$currentStartTime - $currentEndTime";
+                }
+            } else {
+                $allTimeSlots[] = "$startTime - $endTime";
+            }
+        }
+
+        // Sort time slots from earliest to latest
+        usort($allTimeSlots, function ($a, $b) {
+            [$startA] = explode(" - ", $a);
+            [$startB] = explode(" - ", $b);
+
+            return strtotime($startA) <=> strtotime($startB);
+        });
+
+        return $allTimeSlots;
+    }
+
+    /**
      * Format date to a specific format.
      *
      * @param Carbon $date
@@ -279,5 +319,30 @@ trait DeliveryMethodTrait
     private function formattedDate(Carbon $date): string
     {
         return $date->format('Y-m-d');
+    }
+
+    /**
+     * Convert time to a minutes format
+     *
+     * @param string $time
+     * @return string
+     */
+    private function timeToMinutesFormat(string $time): string
+    {
+        list($hours, $minutes) = explode(':', $time);
+        return $hours * 60 + $minutes;
+    }
+
+    /**
+     * Convert minutes to a readable time format
+     *
+     * @param string $minutes
+     * @return string
+     */
+    private function minutesToTimeFormat(string $minutes): string
+    {
+        $hours = str_pad(floor($minutes / 60), 2, '0', STR_PAD_LEFT);
+        $mins = str_pad($minutes % 60, 2, '0', STR_PAD_LEFT);
+        return "$hours:$mins";
     }
 }

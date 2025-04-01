@@ -207,30 +207,32 @@ class DeliveryMethodRepository extends BaseRepository
      */
     public function showDeliveryMethodScheduleOptions(array $data): array
     {
-        $deliveryDate = $data['delivery_date'] ?? null;
         $data['set_schedule'] = true;
+        $deliveryDate = $data['delivery_date'] ?? null;
+        $showAllDates = $data['show_all_dates'] ?? false;
+        $showAllTimeslots = $data['show_all_timeslots'] ?? false;
 
         $deliveryMethod = new DeliveryMethod();
         $deliveryMethod->fill($data);
 
         $scheduleOptions = [
             'delivery_message' => null,
+            'schedule_key_points' => [],
             'available_time_slots' => [],
-            'min_date' => $deliveryMethod->minDate(),
-            'max_date' => $deliveryMethod->maxDate(),
-            'dates_disabled' => $deliveryMethod->datesDisabled(),
-            'days_of_week_disabled' => $deliveryMethod->daysOfWeekDisabled(),
-            'schedule_key_points' => [] // Add explanations here
+            'min_date' => $showAllDates ? null : $deliveryMethod->minDate(),
+            'max_date' => $showAllDates ? null : $deliveryMethod->maxDate(),
+            'dates_disabled' => $showAllDates ? [] : $deliveryMethod->datesDisabled(),
+            'days_of_week_disabled' => $showAllDates ? [] : $deliveryMethod->daysOfWeekDisabled(),
         ];
 
         $availableDays = collect($deliveryMethod->operational_hours)
-            ->filter(fn($day) => $day['available'])
+            ->filter(fn($day) => $showAllDates ?? $day['available'])
             ->keys()
             ->map(fn($dayIndex) => Carbon::create()->startOfWeek()->addDays($dayIndex)->format('l'))
             ->toArray();
 
         if (empty($availableDays)) {
-            $scheduleOptions['schedule_key_points'][] = 'Orders are allowed on any day of the week';
+            $scheduleOptions['schedule_key_points'][] = 'Orders are not allowed on any day of the week';
         } elseif (count($availableDays) == 7) {
             $scheduleOptions['schedule_key_points'][] = 'Orders are allowed on all days of the week';
         } else {
@@ -255,7 +257,7 @@ class DeliveryMethodRepository extends BaseRepository
         }
 
         // Minimum notice for orders
-        if ($deliveryMethod->require_minimum_notice_for_orders && $deliveryMethod->earliest_delivery_time_value > 0) {
+        if (!$showAllDates && $deliveryMethod->require_minimum_notice_for_orders && $deliveryMethod->earliest_delivery_time_value > 0) {
             $unit = $deliveryMethod->earliest_delivery_time_unit;
             $value = $deliveryMethod->earliest_delivery_time_value;
             $unitText = $value == 1 ? $unit : $unit . 's';
@@ -267,7 +269,7 @@ class DeliveryMethodRepository extends BaseRepository
         }
 
         // Maximum notice for orders
-        if ($deliveryMethod->restrict_maximum_notice_for_orders && $deliveryMethod->latest_delivery_time_value > 0) {
+        if (!$showAllDates && $deliveryMethod->restrict_maximum_notice_for_orders && $deliveryMethod->latest_delivery_time_value > 0) {
             $value = $deliveryMethod->latest_delivery_time_value;
             $unitText = $value == 1 ? 'day' : 'days';
 
@@ -279,12 +281,16 @@ class DeliveryMethodRepository extends BaseRepository
 
         // Delivery message
         if ($deliveryDate && $deliveryMethod->schedule_type == DeliveryMethodScheduleType::DATE_AND_TIME->value) {
-            $isValidDate = $deliveryMethod->isValidDate($deliveryDate);
+
+            $isValidDate = $showAllDates || $deliveryMethod->isValidDate($deliveryDate);
 
             if ($isValidDate) {
-                $scheduleOptions['available_time_slots'] = $deliveryMethod->availableTimeSlots($deliveryDate);
 
-                // Format delivery message
+                $scheduleOptions['available_time_slots'] =
+                    $showAllTimeslots
+                        ? $deliveryMethod->allTimeSlots($deliveryDate)
+                        : $deliveryMethod->availableTimeSlots($deliveryDate);
+
                 $deliveryDate = Carbon::parse($deliveryDate);
 
                 $scheduleOptions['delivery_message'] = sprintf(
@@ -293,6 +299,7 @@ class DeliveryMethodRepository extends BaseRepository
                     $deliveryDate->format('D'),                     // e.g., "Wed"
                     $deliveryDate->diffForHumans(null, true)        // e.g., "6 days"
                 );
+
             }
         }
 

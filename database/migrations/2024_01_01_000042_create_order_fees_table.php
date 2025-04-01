@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\RateType;
 use App\Models\OrderFee;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
@@ -18,8 +19,10 @@ class CreateOrderFeesTable extends Migration
 
             $table->uuid('id')->primary();
             $table->string('name', OrderFee::NAME_MAX_CHARACTERS);
+            $table->enum('rate_type', OrderFee::RATE_TYPES())->default(RateType::FLAT->value);
+            $table->decimal('amount', 12, 3)->default(0);
+            $table->decimal('percentage_rate', 5, 2)->nullable();
             $table->char('currency', 3)->default(config('app.DEFAULT_CURRENCY'));
-            $table->decimal('amount', 10, 2)->default(0);
             $table->foreignUuid('order_id');
             $table->foreignUuid('store_id');
 

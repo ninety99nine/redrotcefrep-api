@@ -70,6 +70,8 @@ class StorePaymentMethodRepository extends BaseRepository
 
         $filteredConfigs = collect($data['configs'] ?? [])->reject(function ($value, $key) {
             return in_array($key, ['logo', 'photo']);
+        })->mapWithKeys(function ($value, $key) {
+            return [Str::snake($key) => $value];
         })->toArray();
 
         $filteredConfigs = empty($filteredConfigs) ? null : $filteredConfigs;
@@ -248,6 +250,8 @@ class StorePaymentMethodRepository extends BaseRepository
 
             $filteredConfigs = collect($data['configs'] ?? [])->reject(function ($value, $key) {
                 return in_array($key, ['logo', 'photo']);
+            })->mapWithKeys(function ($value, $key) {
+                return [Str::snake($key) => $value];
             })->toArray();
 
             $filteredConfigs = empty($filteredConfigs) ? null : $filteredConfigs;

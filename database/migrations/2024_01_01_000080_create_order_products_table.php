@@ -36,32 +36,32 @@ class CreateOrderProductsTable extends Migration
             $table->string('barcode', 100)->nullable();
 
             /*  Weight Information  */
-            $table->decimal('unit_weight', 10, 2)->default(0);
+            $table->decimal('unit_weight', 12, 3)->default(0);
 
             /*  Pricing Information  */
             $table->boolean('is_free')->default(false);
             $table->char('currency', 3)->default(config('app.DEFAULT_CURRENCY'));
-            $table->decimal('unit_regular_price', 10, 2)->default(0);
+            $table->decimal('unit_regular_price', 12, 3)->default(0);
 
             $table->boolean('on_sale')->default(false);
-            $table->decimal('unit_sale_price', 10, 2)->default(0);
-            $table->decimal('unit_sale_discount', 10, 2)->default(0);
+            $table->decimal('unit_sale_price', 12, 3)->default(0);
+            $table->decimal('unit_sale_discount', 12, 3)->default(0);
             $table->unsignedSmallInteger('unit_sale_discount_percentage')->default(0);
 
-            $table->decimal('unit_cost_price', 10, 2)->default(0);
+            $table->decimal('unit_cost_price', 12, 3)->default(0);
 
             $table->boolean('has_price')->default(false);
-            $table->decimal('unit_price', 10, 2)->default(0);
+            $table->decimal('unit_price', 12, 3)->default(0);
 
-            $table->decimal('unit_profit', 10, 2)->default(0);
+            $table->decimal('unit_profit', 12, 3)->default(0);
             $table->unsignedSmallInteger('unit_profit_percentage')->default(0);
 
-            $table->decimal('unit_loss', 10, 2)->default(0);
+            $table->decimal('unit_loss', 12, 3)->default(0);
             $table->unsignedSmallInteger('unit_loss_percentage')->default(0);
 
-            $table->decimal('sale_discount_total', 10, 2)->default(0);
-            $table->decimal('grand_total', 10, 2)->default(0);
-            $table->decimal('subtotal', 10, 2)->default(0);
+            $table->decimal('sale_discount_total', 12, 3)->default(0);
+            $table->decimal('grand_total', 12, 3)->default(0);
+            $table->decimal('subtotal', 12, 3)->default(0);
 
             /*  Quantity Information  */
             $table->unsignedSmallInteger('original_quantity')->default(1);

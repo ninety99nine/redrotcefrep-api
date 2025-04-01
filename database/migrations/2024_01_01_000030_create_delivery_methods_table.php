@@ -30,38 +30,38 @@ class CreateDeliveryMethodsTable extends Migration
             $table->char('currency', 3)->default(config('app.DEFAULT_CURRENCY'));
 
             $table->boolean('qualify_on_minimum_grand_total')->default(false);
-            $table->decimal('minimum_grand_total', 10, 2)->default(0);
+            $table->decimal('minimum_grand_total', 12, 3)->default(0);
 
             $table->boolean('offer_free_delivery_on_minimum_grand_total')->default(false);
-            $table->decimal('free_delivery_minimum_grand_total', 10, 2)->default(0);
+            $table->decimal('free_delivery_minimum_grand_total', 12, 3)->default(0);
             $table->boolean('ask_for_an_address')->default(false);
             $table->boolean('pin_location_on_map')->default(false);
             $table->boolean('show_distance_on_invoice')->default(false);
 
             $table->boolean('charge_fee')->default(false);
-            $table->enum('fee_type', DeliveryMethod::DELIVERY_METHOD_FEE_TYPES())->default(DeliveryMethodFeeType::FLAT_FEE);
+            $table->enum('fee_type', DeliveryMethod::DELIVERY_METHOD_FEE_TYPES())->default(DeliveryMethodFeeType::FLAT_FEE->value);
             $table->decimal('percentage_fee_rate', 5, 2)->default(0);
-            $table->decimal('flat_fee_rate', 10, 2)->default(0);
+            $table->decimal('flat_fee_rate', 12, 3)->default(0);
 
             $table->json('weight_categories')->nullable();
             $table->json('distance_zones')->nullable();
             $table->json('postal_code_zones')->nullable();
 
-            $table->enum('fallback_fee_type', DeliveryMethod::DELIVERY_METHOD_FALLBACK_FEE_TYPES())->default(DeliveryMethodFallbackFeeType::FLAT_FEE);
+            $table->enum('fallback_fee_type', DeliveryMethod::DELIVERY_METHOD_FALLBACK_FEE_TYPES())->default(DeliveryMethodFallbackFeeType::FLAT_FEE->value);
             $table->decimal('fallback_percentage_fee_rate', 5, 2)->default(0);
-            $table->decimal('fallback_flat_fee_rate', 10, 2)->default(0);
+            $table->decimal('fallback_flat_fee_rate', 12, 3)->default(0);
 
             $table->boolean('set_schedule')->default(false);
-            $table->enum('schedule_type', DeliveryMethod::DELIVERY_METHOD_SCHEDULE_TYPES())->default(DeliveryMethodScheduleType::DATE);
+            $table->enum('schedule_type', DeliveryMethod::DELIVERY_METHOD_SCHEDULE_TYPES())->default(DeliveryMethodScheduleType::DATE->value);
             $table->json('operational_hours')->nullable();
             $table->boolean('auto_generate_time_slots')->default(false);
             $table->unsignedTinyInteger('time_slot_interval_value')->default(1);
-            $table->enum('time_slot_interval_unit', DeliveryMethod::AUTO_GENERATE_TIME_SLOTS_UNITS())->default(AutoGenerateTimeSlotsUnit::HOUR);
+            $table->enum('time_slot_interval_unit', DeliveryMethod::AUTO_GENERATE_TIME_SLOTS_UNITS())->default(AutoGenerateTimeSlotsUnit::HOUR->value);
 
             $table->boolean('same_day_delivery')->default(false);
             $table->boolean('require_minimum_notice_for_orders')->default(false);
             $table->unsignedTinyInteger('earliest_delivery_time_value')->default(1);
-            $table->enum('earliest_delivery_time_unit', DeliveryMethod::DELIVERY_TIME_UNITS())->default(DeliveryTimeUnit::DAY);
+            $table->enum('earliest_delivery_time_unit', DeliveryMethod::DELIVERY_TIME_UNITS())->default(DeliveryTimeUnit::DAY->value);
             $table->boolean('restrict_maximum_notice_for_orders')->default(false);
             $table->unsignedTinyInteger('latest_delivery_time_value')->default(1);
 

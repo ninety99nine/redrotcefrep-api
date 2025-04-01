@@ -3,6 +3,7 @@
 namespace App\Casts;
 
 use App\Traits\Base\BaseTrait;
+use App\Services\Money\MoneyService;
 use Illuminate\Contracts\Database\Eloquent\CastsAttributes;
 
 class DeliveryDestinations implements CastsAttributes
@@ -40,7 +41,7 @@ class DeliveryDestinations implements CastsAttributes
             /**
              *  Convert the cost to money format
              */
-            $value[$key]['cost'] = $this->convertToMoneyFormat($deliveryDestination['cost'], $attributes['currency']);
+            $value[$key]['cost'] = MoneyService::convertToMoneyFormat($deliveryDestination['cost'], $attributes['currency']);
 
         }
 

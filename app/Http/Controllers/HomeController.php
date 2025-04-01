@@ -15,10 +15,10 @@ use App\Services\Ussd\UssdService;
 use App\Http\Resources\UserResource;
 use App\Http\Resources\HomeResource;
 use App\Repositories\UserRepository;
+use App\Services\Money\MoneyService;
 use App\Services\Filter\FilterService;
 use App\Services\Sorting\SortingService;
 use App\Services\Country\CountryService;
-use App\Services\Currency\CurrencyService;
 use App\Services\Language\LanguageService;
 use App\Http\Controllers\Base\BaseController;
 use App\Http\Requests\Home\ShowSortingRequest;
@@ -27,6 +27,7 @@ use App\Http\Requests\Home\ShowApiHomeRequest;
 use App\Http\Requests\Home\ShowCountriesRequest;
 use App\Http\Requests\Home\ShowLanguagesRequest;
 use App\Http\Requests\Home\ShowCurrenciesRequest;
+use App\Http\Requests\Home\ConvertCurrencyRequest;
 use App\Services\CountryAddress\CountryAddressService;
 use App\Http\Requests\Home\ShowCountryAddressOptionsRequest;
 
@@ -148,7 +149,7 @@ class HomeController extends BaseController
      */
     public function showCountries(ShowCountriesRequest $request): JsonResponse
     {
-        return $this->prepareOutput((new CountryService)->getCountries());
+        return $this->prepareOutput(CountryService::getCountries());
     }
 
     /**
@@ -159,7 +160,22 @@ class HomeController extends BaseController
      */
     public function showCurrencies(ShowCurrenciesRequest $request): JsonResponse
     {
-        return $this->prepareOutput((new CurrencyService)->getCurrencies());
+        return $this->prepareOutput(MoneyService::getCurrencies());
+    }
+
+    /**
+     * Convert currency.
+     *
+     * @param ConvertCurrencyRequest $request
+     * @return JsonResponse
+     */
+    public function convertCurrency(ConvertCurrencyRequest $request): JsonResponse
+    {
+        return $this->prepareOutput(MoneyService::convertCurrency(
+            $request->input('amount'),
+            $request->input('from'),
+            $request->input('to')
+        ));
     }
 
     /**
@@ -170,7 +186,7 @@ class HomeController extends BaseController
      */
     public function showLanguages(ShowLanguagesRequest $request): JsonResponse
     {
-        return $this->prepareOutput((new LanguageService)->getLanguages());
+        return $this->prepareOutput(LanguageService::getLanguages());
     }
 
     /**
@@ -182,7 +198,7 @@ class HomeController extends BaseController
      */
     public function showCountryAddressOptions(ShowCountryAddressOptionsRequest $request): JsonResponse
     {
-        return $this->prepareOutput((new CountryAddressService)->getCountryAddressOptions());
+        return $this->prepareOutput(CountryAddressService::getCountryAddressOptions());
     }
 
     /**

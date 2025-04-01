@@ -6,7 +6,7 @@ use App\Traits\Base\BaseTrait;
 use App\Services\Money\MoneyService;
 use Illuminate\Contracts\Database\Eloquent\CastsAttributes;
 
-class Currency implements CastsAttributes
+class CheckoutFees implements CastsAttributes
 {
     use BaseTrait;
 
@@ -21,11 +21,15 @@ class Currency implements CastsAttributes
      */
     public function get($model, $key, $value, $attributes)
     {
-        if($currency = MoneyService::findCurrencyByCode($value)) {
-            return [
-                'code' => $currency['code'],
-                'symbol' => $currency['symbol_native']
-            ];
+        if(is_null($value)) {
+            return [];
+        }else if(is_string($value)) {
+            $value = json_decode($value, true);
+        }
+
+        foreach($value as $key => $checkoutFee) {
+            $value[$key]['flat_rate'] = MoneyService::convertToMoneyFormat($checkoutFee['flat_rate'], $attributes['currency']);
+            $value[$key]['percentage_rate'] = $this->convertToPercentageFormat($checkoutFee['percentage_rate']);
         }
 
         return $value;
@@ -42,17 +46,6 @@ class Currency implements CastsAttributes
      */
     public function set($model, $key, $value, $attributes)
     {
-        if( is_array($value) ) {
-
-            //  If we have the array code value
-            if( isset($value['code']) && !empty($value['code']) ) {
-
-                return $value['code'];
-
-            }
-
-        }
-
-        return $value;
+        return json_encode($value);
     }
 }

@@ -105,7 +105,7 @@ class CreateOrderRequest extends FormRequest
                 'collection_type' => ['bail', 'sometimes', 'string', Rule::in($collectionTypes)],
 
                 'customer_note' => ['bail', 'sometimes', 'string', 'min:'.Order::CUSTOMER_NOTE_MIN_CHARACTERS, 'max:'.Order::CUSTOMER_NOTE_MAX_CHARACTERS],
-                'store_note' => ['bail', 'sometimes', 'string', 'min:'.Order::STORE_NOTE_MIN_CHARACTERS, 'max:'.Order::STORE_NOTE_MAX_CHARACTERS],
+                'internal_note' => ['bail', 'sometimes', 'string', 'min:'.Order::INTERNAL_NOTE_MIN_CHARACTERS, 'max:'.Order::INTERNAL_NOTE_MAX_CHARACTERS],
 
                 'delivery_destination_name' => ['bail', 'sometimes', 'string' /*, Rule::in($deliveryDestinationNames)*/],
                 'pickup_destination_name' => ['bail', 'sometimes', 'string' /*, Rule::in($pickupDestinationNames)*/],

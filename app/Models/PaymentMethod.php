@@ -27,16 +27,20 @@ class PaymentMethod extends BaseModel
 
     protected $casts = [
         'active' => 'boolean',
+        'countries' => JsonToArray::class,
+        'currencies' => JsonToArray::class,
+        'ussd_codes' => JsonToArray::class,
         'automated_verification' => 'boolean',
         'config_schema' => JsonToArray::class,
-        'supported_countries' => JsonToArray::class
+        'allowed_countries' => JsonToArray::class,
     ];
 
     protected $tranformableCasts = [];
 
     protected $fillable = [
         'active', 'name', 'type', 'automated_verification',
-        'supported_countries', 'config_schema', 'position'
+        'currencies', 'countries', 'allowed_countries',
+        'ussd_codes', 'config_schema', 'position'
     ];
 
     /****************************

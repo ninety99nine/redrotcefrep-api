@@ -32,13 +32,13 @@ class UpdatePromotionRequest extends FormRequest
         try {
 
             /**
-             *  Convert the "discount_type" to the correct format if it has been set on the request inputs
+             *  Convert the "discount_rate_type" to the correct format if it has been set on the request inputs
              *
              *  Example: convert "percentage" into "Percentage"
              */
-            if($this->has('discount_type')) {
+            if($this->has('discount_rate_type')) {
                 $this->merge([
-                    'discount_type' => strtolower($this->request->all()['discount_type'])
+                    'discount_rate_type' => strtolower($this->request->all()['discount_rate_type'])
                 ]);
             }
 
@@ -115,9 +115,9 @@ class UpdatePromotionRequest extends FormRequest
                 ['bail', 'sometimes', 'boolean'],
                 $offerFreeDelivery ? [] : ['required']
             ),
-            'discount_type' => ['bail', 'sometimes', Rule::in(Promotion::DISCOUNT_TYPES())],
+            'discount_rate_type' => ['bail', 'sometimes', Rule::in(Promotion::DISCOUNT_RATE_TYPES())],
             'discount_percentage_rate' => ['bail', 'sometimes', 'min:1', 'max:100', 'numeric'],
-            'discount_fixed_rate' => ['bail', 'sometimes', 'min:1', 'numeric', 'regex:/^\d+(\.\d{1,2})?$/'],
+            'discount_flat_rate' => ['bail', 'sometimes', 'min:1', 'numeric', 'regex:/^\d+(\.\d{1,2})?$/'],
 
             /*  Offer Delivery Information  */
             'offer_free_delivery' => array_merge(
@@ -187,7 +187,7 @@ class UpdatePromotionRequest extends FormRequest
     public function messages()
     {
         return [
-            'discount_type.in' => 'Answer "'.collect(Promotion::DISCOUNT_TYPES())->join('", "', '" or "').'" to indicate the promotion discount type',
+            'discount_rate_type.in' => 'Answer "'.collect(Promotion::DISCOUNT_RATE_TYPES())->join('", "', '" or "').'" to indicate the promotion discount type',
         ];
     }
 

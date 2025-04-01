@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Casts\Money;
+use App\Enums\RateType;
 use App\Casts\Currency;
 use App\Enums\TaxMethod;
 use App\Casts\Percentage;
@@ -11,10 +12,10 @@ use App\Enums\WeightUnit;
 use App\Traits\StoreTrait;
 use App\Casts\JsonToArray;
 use App\Enums\DistanceUnit;
+use App\Casts\CheckoutFees;
 use App\Enums\InsightPeriod;
 use App\Models\Base\BaseModel;
 use App\Enums\InsightCategory;
-use App\Enums\CheckoutFeeType;
 use App\Enums\RequestFileName;
 use App\Casts\E164PhoneNumberCast;
 use App\Casts\DeliveryDestinations;
@@ -78,7 +79,7 @@ class Store extends BaseModel
 
     public static function CHECKOUT_FEE_TYPES(): array
     {
-        return array_map(fn($type) => $type->value, CheckoutFeeType::cases());
+        return array_map(fn($type) => $type->value, RateType::cases());
     }
 
     public static function INSIGHT_PERIODS(): array
@@ -163,7 +164,7 @@ class Store extends BaseModel
         'social_links' => JsonToArray::class,
         'allow_deposit_payments' => 'boolean',
         'opening_hours' => JsonToArray::class,
-        'checkout_fees' => JsonToArray::class,
+        'checkout_fees' => CheckoutFees::class,
         'allow_installment_payments' => 'boolean',
         'deposit_percentages' => JsonToArray::class,
         'pickup_destinations' => JsonToArray::class,

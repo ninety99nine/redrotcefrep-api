@@ -50,36 +50,36 @@ class CreateProductsTable extends Migration
             $table->unsignedTinyInteger('total_visible_variations')->nullable();
 
             /*  Weight Information  */
-            $table->decimal('unit_weight', 10, 2)->default(0);
+            $table->decimal('unit_weight', 12, 3)->default(0);
 
             /*  Pricing Information  */
             $table->boolean('is_free')->default(false);
             $table->char('currency', 3)->default(config('app.DEFAULT_CURRENCY'));
-            $table->decimal('unit_regular_price', 10, 2)->default(0);
+            $table->decimal('unit_regular_price', 12, 3)->default(0);
 
             $table->boolean('on_sale')->default(false);
-            $table->decimal('unit_sale_price', 10, 2)->default(0);
-            $table->decimal('unit_sale_discount', 10, 2)->default(0);
+            $table->decimal('unit_sale_price', 12, 3)->default(0);
+            $table->decimal('unit_sale_discount', 12, 3)->default(0);
             $table->unsignedSmallInteger('unit_sale_discount_percentage')->default(0);
 
-            $table->decimal('unit_cost_price', 10, 2)->default(0);
+            $table->decimal('unit_cost_price', 12, 3)->default(0);
 
             $table->boolean('has_price')->default(false);
-            $table->decimal('unit_price', 10, 2)->default(0);
+            $table->decimal('unit_price', 12, 3)->default(0);
 
-            $table->decimal('unit_profit', 10, 2)->default(0);
+            $table->decimal('unit_profit', 12, 3)->default(0);
             $table->unsignedSmallInteger('unit_profit_percentage')->default(0);
 
-            $table->decimal('unit_loss', 10, 2)->default(0);
+            $table->decimal('unit_loss', 12, 3)->default(0);
             $table->unsignedSmallInteger('unit_loss_percentage')->default(0);
 
             /*  Quantity Information  */
-            $table->enum('allowed_quantity_per_order', Product::ALLOWED_QUANTITY_PER_ORDER_OPTIONS())->default(AllowedQuantityPerOrder::UNLIMITED);
+            $table->enum('allowed_quantity_per_order', Product::ALLOWED_QUANTITY_PER_ORDER_OPTIONS())->default(AllowedQuantityPerOrder::UNLIMITED->value);
             $table->unsignedSmallInteger('maximum_allowed_quantity_per_order')->default(1);
 
             /*  Stock Information  */
             $table->boolean('has_stock')->default(true);
-            $table->enum('stock_quantity_type', Product::STOCK_QUANTITY_TYPES())->default(StockQuantityType::UNLIMITED);
+            $table->enum('stock_quantity_type', Product::STOCK_QUANTITY_TYPES())->default(StockQuantityType::UNLIMITED->value);
             $table->unsignedMediumInteger('stock_quantity')->default(100);
 
             /*  Arrangement Information  */

@@ -9,7 +9,6 @@ use App\Casts\JsonToArray;
 use App\Models\Base\BaseModel;
 use App\Traits\Base\BaseTrait;
 use App\Enums\DeliveryTimeUnit;
-use App\Enums\DeliveryMethodType;
 use App\Traits\DeliveryMethodTrait;
 use App\Enums\DeliveryMethodFeeType;
 use App\Enums\AutoGenerateTimeSlotsUnit;
@@ -35,11 +34,6 @@ class DeliveryMethod extends BaseModel
     public static function DELIVERY_TIME_UNITS(): array
     {
         return array_map(fn($method) => $method->value, DeliveryTimeUnit::cases());
-    }
-
-    public static function DELIVERY_METHOD_TYPES(): array
-    {
-        return array_map(fn($method) => $method->value, DeliveryMethodType::cases());
     }
 
     public static function DELIVERY_METHOD_FEE_TYPES(): array

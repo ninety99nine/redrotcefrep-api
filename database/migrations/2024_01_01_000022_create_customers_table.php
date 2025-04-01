@@ -26,8 +26,8 @@ class CreateCustomersTable extends Migration
 
             $table->timestamp('last_order_at')->nullable();
             $table->unsignedInteger('total_orders')->default(0);
-            $table->decimal('total_spend', 10, 2)->default(0);
-            $table->decimal('total_average_spend', 10, 2)->default(0);
+            $table->decimal('total_spend', 12, 3)->default(0);
+            $table->decimal('total_average_spend', 12, 3)->default(0);
 
             /* Add Timestamps */
             $table->timestamps();

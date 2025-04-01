@@ -20,7 +20,7 @@ class CreateRowsTable extends Migration
             $table->string('name', Row::NAME_MAX_CHARACTERS)->nullable();
             $table->boolean('visible')->default(false);
             $table->char('background_color', 9)->nullable();
-            $table->enum('layout', Row::LAYOUTS())->default(RowLayout::ONE_COLUMN);
+            $table->enum('layout', Row::LAYOUTS())->default(RowLayout::ONE_COLUMN->value);
             $table->foreignUuid('store_id');
             $table->timestamps();
 

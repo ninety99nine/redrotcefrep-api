@@ -55,7 +55,7 @@ class PromotionFactory extends Factory
         $activateUsingStartDatetime = $this->faker->boolean(5);
         $activateUsingDaysOfTheMonth = $this->faker->boolean(5);
         $activateUsingMonthsOfTheYear = $this->faker->boolean(5);
-        $discountFixedRate = $this->faker->numberBetween(5, 100);
+        $discountflatRate = $this->faker->numberBetween(5, 100);
         $minimumTotalProducts = $this->faker->numberBetween(2, 5);
         $activateUsingMinimumGrandTotal = $this->faker->boolean(5);
         $startDatetime = $activateUsingStartDatetime ? now() : null;
@@ -64,7 +64,7 @@ class PromotionFactory extends Factory
         $minimumTotalProductQuantities = $this->faker->numberBetween(2, 10);
         $offerFreeDelivery = $offerDisount ? $this->faker->boolean(20): true;
         $activateUsingMinimumTotalProductQuantities = $this->faker->boolean(5);
-        $discountType = $this->faker->randomElement(Promotion::DISCOUNT_TYPES());
+        $discountType = $this->faker->randomElement(Promotion::DISCOUNT_RATE_TYPES());
         $activateUsingEndDatetime = $activateUsingStartDatetime ? true : $this->faker->boolean(5);
         $endDatetime = $activateUsingEndDatetime ? now()->addWeek(rand(1, 4)) : null;
         $discountPercentageRate = $this->faker->randomElement(['5', '10', '20', '30', '40', '50']);
@@ -80,15 +80,15 @@ class PromotionFactory extends Factory
             'description' => $description,
             'hours_of_day' => $hoursOfDay,
             'end_datetime' => $endDatetime,
-            'discount_type' => $discountType,
             'offer_discount' => $offerDisount,
             'start_datetime' => $startDatetime,
             'days_of_the_week' => $daysOfTheWeek,
             'active' => $this->faker->boolean(5),
+            'discount_rate_type' => $discountType,
             'days_of_the_month' => $daysOfTheMonth,
             'months_of_the_year' => $monthsOfTheYear,
             'remaining_quantity' => $remainingQuantity,
-            'discount_fixed_rate' => $discountFixedRate,
+            'discount_flat_rate' => $discountflatRate,
             'offer_free_delivery' => $offerFreeDelivery,
             'activate_using_code' => $activateUsingCode,
             'minimum_grand_total' => $minimumGrandTotal,

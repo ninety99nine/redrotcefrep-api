@@ -22,7 +22,10 @@ class CreatePaymentMethodsTable extends Migration
             $table->string('name', PaymentMethod::NAME_MAX_CHARACTERS);
             $table->string('type', PaymentMethod::TYPE_MAX_CHARACTERS);
             $table->boolean('automated_verification')->default(0);
-            $table->json('supported_countries')->nullable();
+            $table->json('currencies')->nullable();
+            $table->json('countries')->nullable();
+            $table->json('allowed_countries')->nullable();
+            $table->json('ussd_codes')->nullable();
             $table->json('config_schema')->nullable();
             $table->unsignedTinyInteger('position')->nullable();
 

@@ -18,7 +18,7 @@ class CreateModulesTable extends Migration
         Schema::create('modules', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->string('name', Module::NAME_MAX_CHARACTERS)->nullable();
-            $table->enum('type', Module::TYPES())->default(ModuleType::TEXT);
+            $table->enum('type', Module::TYPES())->default(ModuleType::TEXT->value);
             $table->json('settings')->nullable();
             $table->foreignUuid('store_id');
             $table->timestamps();

@@ -19,7 +19,7 @@ class CreateStorePaymentMethodTable extends Migration
 
             $table->boolean('active')->default(0);
             $table->string('custom_name', 20)->nullable();
-            $table->json('instruction')->nullable();
+            $table->string('instruction')->nullable();
             $table->json('configs')->nullable();
             $table->unsignedTinyInteger('position')->nullable();
 

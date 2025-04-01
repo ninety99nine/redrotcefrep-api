@@ -25,6 +25,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\MobileVerification;
 use App\Traits\MessageCrafterTrait;
 use App\Enums\PaymentMethodCategory;
+use App\Services\Money\MoneyService;
 use App\Enums\TransactionFailureType;
 use App\Http\Resources\UserResources;
 use App\Enums\OrderCancellationReason;
@@ -145,6 +146,19 @@ class OrderRepository extends BaseRepository
         $storeId = $data['store_id'];
         $store = Store::find($storeId);
 
+        if($store) {
+
+            $association = isset($data['association']) ? Association::tryFrom($data['association']) : null;
+
+            if($association == Association::TEAM_MEMBER) {
+                $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+                if(!$isAuthourized) return ['created' => false, 'message' => 'You do not have permission to create order'];
+            }
+
+        }else{
+            return ['created' => false, 'message' => 'This store does not exist'];
+        }
+
         $shoppingCartInstance = $this->getShoppingCartService()->startInspection($store);
         $inspectedShoppingCart = $shoppingCartInstance->getShoppingCart();
 
@@ -158,8 +172,18 @@ class OrderRepository extends BaseRepository
         $order = Order::create($orderPayload);
         $orderProducts = $this->syncOrderProducts($order, $inspectedShoppingCart);
         $orderPromotions = $this->syncOrderPromotions($order, $inspectedShoppingCart);
-        $this->addOrderHistoryComment($order, 'Order created on '.Carbon::parse($order->created_at)->format('d M Y @ H:i'));
-        $order->setRelations(['store' => $store, 'customer' => $customer, 'orderProducts' => $orderProducts, 'orderPromotions' => $orderPromotions]);
+        $orderDiscounts = $this->syncOrderDiscounts($order, $inspectedShoppingCart);
+        $orderFees = $this->syncOrderFees($order, $inspectedShoppingCart);
+
+        $this->addOrderHistoryComment($order, 'Order created');
+        $order->setRelations([
+            'store' => $store,
+            'customer' => $customer,
+            'orderFees' => $orderFees,
+            'orderProducts' => $orderProducts,
+            'orderDiscounts' => $orderDiscounts,
+            'orderPromotions' => $orderPromotions
+        ]);
 
         $this->updateCustomerStatistics($order);
         $deliveryAddress = $this->addDeliveryAddress($order, $data);
@@ -169,9 +193,12 @@ class OrderRepository extends BaseRepository
         //  $this->sendOrderCreatedNotifications($order);
         $shoppingCartInstance->forgetCache($store);
 
-        if(!$this->checkIfHasRelationOnRequest('customer')) $order->unsetRelation('customer');
-        if(!$this->checkIfHasRelationOnRequest('occasion')) $order->unsetRelation('occasion');
         if(!$this->checkIfHasRelationOnRequest('store')) $order->unsetRelation('store');
+        if(!$this->checkIfHasRelationOnRequest('customer')) $order->unsetRelation('customer');
+        if(!$this->checkIfHasRelationOnRequest('orderFees')) $order->unsetRelation('orderFees');
+        if(!$this->checkIfHasRelationOnRequest('orderProducts')) $order->unsetRelation('orderProducts');
+        if(!$this->checkIfHasRelationOnRequest('orderDiscounts')) $order->unsetRelation('orderDiscounts');
+        if(!$this->checkIfHasRelationOnRequest('orderPromotions')) $order->unsetRelation('orderPromotions');
 
         return $this->showCreatedResource($order);
     }
@@ -408,54 +435,86 @@ class OrderRepository extends BaseRepository
      */
     public function updateOrder(string $orderId, array $data): Order|array
     {
-        $oldOrder = Order::with(['store', 'cart', 'customer', 'deliveryAddress'])->find($orderId);
+        $order = Order::with(['store'])->find($orderId);
 
-        if($oldOrder) {
-            $store = $oldOrder->store;
+        if($order) {
+            $store = $order->store;
             if($store) {
                 $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
                 if(!$isAuthourized) return ['updated' => false, 'message' => 'You do not have permission to update order'];
+                if(!$this->checkIfHasRelationOnRequest('store')) $order->unsetRelation('store');
             }else{
                 return ['updated' => false, 'message' => 'This store does not exist'];
             }
 
-            if($this->checkIfOrderCannotBeUpdated($oldOrder)) {
-                //  return ['updated' => false, 'message' => $this->orderCannotBeUpdatedReason()];
-            }
+            if(isset($data['cart_products'])) {
 
-            $cart = $oldOrder->cart;
+                $shoppingCartInstance = $this->getShoppingCartService()->startInspection($store);
+                $inspectedShoppingCart = $shoppingCartInstance->getShoppingCart();
 
-            if(isset($data['cart_products']) || isset($data['cart_promotion_code'])) {
-                $inspectedShoppingCart = $this->getShoppingCartService()->startInspection($store);
-                if($inspectedShoppingCart->total_products == 0) return ['updated' => false, 'message' => 'The shopping cart does not have products to update this order'];
+                $totalOrderProducts = $inspectedShoppingCart['totals_summary']['order_products']['total_products'];
+                if($totalOrderProducts == 0) return ['updated' => false, 'message' => 'The shopping cart does not have products to update order'];
 
-                $cart = $this->updateOrderCart($oldOrder, $inspectedShoppingCart);
-            }
+                $updateCustomerProfile = isset($data['customer']) && isset($data['customer']['update_profile']) && $this->isTruthy($data['customer']['update_profile']);
+                $customer = $updateCustomerProfile ? $this->updateOrCreateCustomer($store, $data['customer']) : null;
+                $unsavedOrder = $order->setRelations(['customer' => $customer]);
+                $orderPayload = $this->prepareOrderPayload($unsavedOrder, $data, $inspectedShoppingCart);
 
-            $customer = isset($data['customer']) ? $this->updateOrCreateCustomer($store, $data['customer']) : $oldOrder->customer;
+                $oldOrder = clone $order;
+                $order->update($orderPayload);
+                $order = $this->updateOrderAmountBalance($order);
 
-            $order = (new Order)->setRelations(['store' => $store, 'cart' => $cart, 'customer' => $customer]);
-            $orderPayload = $this->prepareOrderPayload($order, $data, $inspectedShoppingCart);
-            $order = tap(clone $oldOrder)->update($orderPayload);
+                $orderProducts = $this->syncOrderProducts($order, $inspectedShoppingCart, true);
+                $orderPromotions = $this->syncOrderPromotions($order, $inspectedShoppingCart, true);
+                $orderDiscounts = $this->syncOrderDiscounts($order, $inspectedShoppingCart, true);
+                $orderFees = $this->syncOrderFees($order, $inspectedShoppingCart, true);
 
-            $deliveryAddress = $this->addOrUpdateDeliveryAddress($order, $data);
+                $this->addOrderHistoryComment($order, 'Order updated');
 
-            $order->setRelations(['customer' => $customer]);
-            $this->updateCustomerStatistics($order, $oldOrder);
+                $order->setRelations([
+                    'store' => $store,
+                    'customer' => $customer,
+                    'orderFees' => $orderFees,
+                    'orderProducts' => $orderProducts,
+                    'orderDiscounts' => $orderDiscounts,
+                    'orderPromotions' => $orderPromotions
+                ]);
 
-            if($customer && isset($deliveryAddress)) $this->createCustomerAddress($customer, $deliveryAddress);
-            $order->setRelations(['store' => $store, 'cart' => $cart->load(['orderProducts', 'orderPromotions'])]);
+                $this->updateCustomerStatistics($order, $oldOrder);
+                $deliveryAddress = $this->addOrUpdateDeliveryAddress($order, $data);
+                if($updateCustomerProfile && $customer && $deliveryAddress) $this->createCustomerAddress($customer, $deliveryAddress);
 
-            $this->generateOrderSummary($order);
-            //  $this->sendOrderCreatedNotifications($order);
-            if(isset($inspectedShoppingCart)) $this->getShoppingCartService()->forgetCache();
+                $this->generateOrderSummary($order);
+                //  $this->sendOrderUpdatedNotifications($order);
+                $shoppingCartInstance->forgetCache($store);
 
-            if(!$this->checkIfHasRelationOnRequest('customer')) $order->unsetRelation('customer');
-            if(!$this->checkIfHasRelationOnRequest('occasion')) $order->unsetRelation('occasion');
-            if(!$this->checkIfHasRelationOnRequest('store')) $order->unsetRelation('store');
-            if(!$this->checkIfHasRelationOnRequest('cart')) $order->unsetRelation('cart');
+                if(!$this->checkIfHasRelationOnRequest('store')) $order->unsetRelation('store');
+                if(!$this->checkIfHasRelationOnRequest('customer')) $order->unsetRelation('customer');
+                if(!$this->checkIfHasRelationOnRequest('orderFees')) $order->unsetRelation('orderFees');
+                if(!$this->checkIfHasRelationOnRequest('orderProducts')) $order->unsetRelation('orderProducts');
+                if(!$this->checkIfHasRelationOnRequest('orderDiscounts')) $order->unsetRelation('orderDiscounts');
+                if(!$this->checkIfHasRelationOnRequest('orderPromotions')) $order->unsetRelation('orderPromotions');
+                if(!$this->checkIfHasRelationOnRequest('deliveryAddress')) $order->unsetRelation('deliveryAddress');
 
+                return $this->showUpdatedResource($order);
+
+            }else{
+
+                $data = [
+                    'status' => isset($data['status']) ? $data['status'] : $order->status,
+                    'remark' => isset($data['remark']) ? $data['remark'] : $order->remark,
+                    'courier_id' => isset($data['courier_id']) ? $data['courier_id'] : $order->courier_id,
+                    'internal_note' => isset($data['internal_note']) ? $data['internal_note'] : $order->internal_note,
+                    'payment_status' => isset($data['payment_status']) ? $data['payment_status'] : $order->payment_status,
+                    'tracking_number' => isset($data['tracking_number']) ? $data['tracking_number'] : $order->tracking_number,
+                    'assigned_to_user_id' => isset($data['assigned_to_user_id']) ? $data['assigned_to_user_id'] : $order->assigned_to_user_id,
+                ];
+
+            $order->update($data);
             return $this->showUpdatedResource($order);
+
+            }
+
         }else{
             return ['updated' => false, 'message' => 'This order does not exist'];
         }
@@ -1513,30 +1572,35 @@ class OrderRepository extends BaseRepository
         $store = $order->store;
         $customer = $order->customer;
         $isc = $inspectedShoppingCart;
+        $unsavedOrder = $order->id != null;
         $uncreatedOrder = $order->id == null;
         $customerFirstName = $customerLastName = $customerMobileNumber = $customerEmail = null;
 
         if($customer) {
 
-            $customerEmail = $customer?->email;
-            $customerLastName = $customer?->last_name;
+            $customerEmail = $customer->email;
+            $customerLastName = $customer->last_name;
             $customerFirstName = $customer->first_name;
-            $customerMobileNumber = $customer?->mobile_number?->formatE164();
+            $customerMobileNumber = $customer->mobile_number?->formatE164();
 
         }else if(isset($data['customer'])) {
 
-            $customerEmail = null;
-            $customerMobileNumber = null;
+            $customerEmail = $data['customer']['email'] ?? null;
             $customerLastName = $data['customer']['last_name'] ?? null;
             $customerFirstName = $data['customer']['first_name'] ?? null;
+            $customerMobileNumber = $data['customer']['mobile_number'] ?? null;
 
         }
 
-        $createdByUserId = ($uncreatedOrder && isset($data['created_by_team']) && $this->isTruthy($data['created_by_team']) && $this->hasAuthUser() && $this->getStoreRepository()->checkIfAssociatedAsStoreTeamMember($store)) ? $this->getAuthUser()->id : $order->created_by_user_id;
+        $association = isset($data['association']) ? Association::tryFrom($data['association']) : null;
+        $isTeamMember = $association == Association::TEAM_MEMBER;
+
+        $createdByUserId = ($uncreatedOrder && $isTeamMember) ? $this->getAuthUser()->id : $order->created_by_user_id;
         $placedByUserId = $createdByUserId ? $createdByUserId : ($order->placed_by_user_id ?? $this->getAuthUser()?->id);
         $occasionId = isset($data['occasion_id']) ? $data['occasion_id'] : $order?->occasion_id;
+        $friendGroupId = $uncreatedOrder && !$isTeamMember && isset($data['friend_group_id']) ? $this->getFriendGroupId($data) : $order?->friend_group_id;
 
-        return [
+        $orderPayload = [
             'summary' => null,
             'currency' => $store->currency,
             'status' => OrderStatus::WAITING->value,
@@ -1547,6 +1611,7 @@ class OrderRepository extends BaseRepository
             'vat_rate' => $isc['totals']['vat']['rate']['value'],
             'vat_amount' => $isc['totals']['vat']['amount']->amount,
             'fee_total' => $isc['totals']['fee_total']->amount,
+            'adjustment_total' => $isc['totals']['adjustment_total']->amount,
             'grand_total' => $isc['totals']['grand_total']->amount,
 
             'payment_status' => OrderPaymentStatus::UNPAID->value,
@@ -1614,12 +1679,43 @@ class OrderRepository extends BaseRepository
             'placed_by_user_id' => $placedByUserId,
             'created_by_user_id' => $createdByUserId,
 
-            'store_note' => $data['store_note'] ?? null,
+            'remark' => $data['remark'] ?? null,
+            'internal_note' => $data['internal_note'] ?? null,
 
             'store_id' => $store->id,
             'occasion_id' => $occasionId,
-            'friend_group_id' => $this->getFriendGroupId($data),
+            'friend_group_id' => $friendGroupId
         ];
+
+        if($isTeamMember) {
+
+            $orderPayload = array_merge($orderPayload, [
+                'last_viewed_by_team_at' => now(),
+                'total_views_by_team' => ($order?->total_views_by_team ?? 0) + 1,
+                'first_viewed_by_team_at' => $order?->first_viewed_by_team_at ?? now(),
+
+                'collection_qr_code' => $order?->collection_qr_code ?? $orderPayload['collection_qr_code'],
+                'collection_verified' => $order?->collection_verified ?? $orderPayload['collection_verified'],
+                'remark' => isset($data['remark']) ? $data['remark'] : $order?->remark ?? $orderPayload['remark'],
+                'status' => isset($data['status']) ? $data['status'] : $order?->status ?? $orderPayload['status'],
+                'collection_verified_at' => $order?->collection_verified_at ?? $orderPayload['collection_verified_at'],
+                'collection_code_expires_at' => $order?->collection_code_expires_at ?? $orderPayload['collection_code_expires_at'],
+                'courier_id' => isset($data['courier_id']) ? $data['courier_id'] : $order?->courier_id ?? $orderPayload['courier_id'],
+                'collection_verified_by_user_id' => $order?->collection_verified_by_user_id ?? $orderPayload['collection_verified_by_user_id'],
+                'internal_note' => isset($data['internal_note']) ? $data['internal_note'] : $order?->internal_note ?? $orderPayload['internal_note'],
+                'payment_status' => isset($data['payment_status']) ? $data['payment_status'] : $order?->payment_status ?? $orderPayload['payment_status'],
+                'collection_note' => isset($data['collection_note']) ? $data['collection_note'] : $order?->collection_note ?? $orderPayload['collection_note'],
+                'tracking_number' => isset($data['tracking_number']) ? $data['tracking_number'] : $order?->tracking_number ?? $orderPayload['tracking_number'],
+                'assigned_to_user_id' => isset($data['assigned_to_user_id']) ? $data['assigned_to_user_id'] : $order?->assigned_to_user_id ?? $orderPayload['assigned_to_user_id'],
+
+                'cancellation_reason' => isset($data['cancellation_reason']) ? $data['cancellation_reason'] : $order?->cancellation_reason,
+                'cancelled_at' => isset($data['status']) && $data['status'] == OrderStatus::CANCELLED->value ? now() : $order?->cancelled_at,
+                'other_cancellation_reason' => isset($data['other_cancellation_reason']) ? $data['other_cancellation_reason'] : $order?->other_cancellation_reason,
+            ]);
+
+        }
+
+        return $orderPayload;
     }
 
     /**
@@ -1627,9 +1723,10 @@ class OrderRepository extends BaseRepository
      *
      * @param Order $order
      * @param array $inspectedShoppingCart
+     * @param array $deleteExisting
      * @return Collection
      */
-    public function syncOrderProducts(Order $order, array $inspectedShoppingCart): Collection
+    public function syncOrderProducts(Order $order, array $inspectedShoppingCart, bool $deleteExisting = false): Collection
     {
         $inserts = collect($inspectedShoppingCart['order_products'])->map(function($orderProduct) use ($order) {
             if(empty($orderProduct['detected_changes'])) $orderProduct['detected_changes'] = null;
@@ -1638,6 +1735,7 @@ class OrderRepository extends BaseRepository
             return $orderProduct;
         });
 
+        if($deleteExisting) $order->orderProducts()->delete();
         return $order->orderProducts()->createMany($inserts);
     }
 
@@ -1646,9 +1744,10 @@ class OrderRepository extends BaseRepository
      *
      * @param Order $order
      * @param array $inspectedShoppingCart
+     * @param array $deleteExisting
      * @return Collection
      */
-    public function syncOrderPromotions(Order $order, array $inspectedShoppingCart): Collection
+    public function syncOrderPromotions(Order $order, array $inspectedShoppingCart, bool $deleteExisting = false): Collection
     {
         $inserts = collect($inspectedShoppingCart['order_promotions'])->map(function($orderPromotion) use ($order) {
             if(empty($orderPromotion['detected_changes'])) $orderPromotion['detected_changes'] = null;
@@ -1657,8 +1756,50 @@ class OrderRepository extends BaseRepository
             return $orderPromotion;
         });
 
+        if($deleteExisting) $order->orderPromotions()->delete();
         return $order->orderPromotions()->createMany($inserts);
     }
+
+    /**
+     * Sync order discounts.
+     *
+     * @param Order $order
+     * @param array $inspectedShoppingCart
+     * @param array $deleteExisting
+     * @return Collection
+     */
+    public function syncOrderDiscounts(Order $order, array $inspectedShoppingCart, bool $deleteExisting = false): Collection
+    {
+        $inserts = collect($inspectedShoppingCart['totals']['discounts'])->map(function($orderDiscount) use ($order) {
+            $orderDiscount['store_id'] = $order->store_id;
+            $orderDiscount['order_id'] = $order->id;
+            return $orderDiscount;
+        });
+
+        if($deleteExisting) $order->orderDiscounts()->delete();
+        return $order->orderDiscounts()->createMany($inserts);
+    }
+
+    /**
+     * Sync order fees.
+     *
+     * @param Order $order
+     * @param array $inspectedShoppingCart
+     * @param array $deleteExisting
+     * @return Collection
+     */
+    public function syncOrderFees(Order $order, array $inspectedShoppingCart, bool $deleteExisting = false): Collection
+    {
+        $inserts = collect($inspectedShoppingCart['totals']['fees'])->map(function($orderFee) use ($order) {
+            $orderFee['store_id'] = $order->store_id;
+            $orderFee['order_id'] = $order->id;
+            return $orderFee;
+        });
+
+        if($deleteExisting) $order->orderFees()->delete();
+        return $order->orderFees()->createMany($inserts);
+    }
+
 
     /**
      * Add order history comment.
@@ -1928,8 +2069,8 @@ class OrderRepository extends BaseRepository
             $payableAmountExceeded = $amount > ($outstandingAmountRemaining = $outstandingAmount - $pendingAmount);
 
             if($payableAmountExceeded) {
-                $amountSpecified = $order->convertToMoneyFormat($amount, $cart->currency);
-                $outstandingAmountRemaining = $order->convertToMoneyFormat($outstandingAmountRemaining, $order->currency);
+                $amountSpecified = MoneyService::convertToMoneyFormat($amount, $cart->currency);
+                $outstandingAmountRemaining = MoneyService::convertToMoneyFormat($outstandingAmountRemaining, $order->currency);
                 throw ValidationException::withMessages([
                     'amount' => 'The amount specified ('.$amountSpecified->amountWithCurrency.') is more than the remaining payable amount of '.$outstandingAmountRemaining->amountWithCurrency.' for this order'
                 ]);
@@ -2069,12 +2210,12 @@ class OrderRepository extends BaseRepository
      * Update order amount balance.
      *
      * @param Order $order
-     * @return void
+     * @return Order
      */
-    public function updateOrderAmountBalance(Order $order)
+    public function updateOrderAmountBalance(Order $order): Order
     {
         $transactions = $order->transactions()->get();
-        $grandTotal = $order->cart->grand_total->amount;
+        $grandTotal = $order->grand_total->amount;
 
         //  Calculate the order balance paid
         $paidTotal = collect($transactions)->filter(fn(Transaction $transaction) => $transaction->isPaid())->map(fn(Transaction $transaction) => $transaction->amount->amount)->sum();
@@ -2111,6 +2252,8 @@ class OrderRepository extends BaseRepository
             'outstanding_total' => $outstandingTotal,
             'outstanding_percentage' => $outstandingPercentage,
         ]);
+
+        return $order;
     }
 
     /**

@@ -5,8 +5,8 @@ namespace App\Http\Requests\Models\Store;
 use App\Models\Store;
 use App\Traits\Base\BaseTrait;
 use Illuminate\Validation\Rule;
+use App\Services\Money\MoneyService;
 use App\Services\Country\CountryService;
-use App\Services\Currency\CurrencyService;
 use App\Services\Language\LanguageService;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -79,7 +79,7 @@ class UpdateStoreRequest extends FormRequest
 
             'checkout_fees' => ['bail', 'sometimes', 'array', 'max:5'],
             'checkout_fees.*.name' => ['bail', 'required', 'string', 'min:'.Store::CHECKOUT_FEE_NAME_MIN_CHARACTERS, 'max:'.Store::CHECKOUT_FEE_NAME_MAX_CHARACTERS],
-            'checkout_fees.*.type' => ['bail', 'required', Rule::in(Store::CHECKOUT_FEE_TYPES())],
+            'checkout_fees.*.rate_type' => ['bail', 'required', Rule::in(Store::CHECKOUT_FEE_TYPES())],
             'checkout_fees.*.flat_rate' => ['bail', 'required_without:checkout_fees.percentage_rate', 'min:0', 'numeric', 'regex:/^\d+(\.\d{1,2})?$/'],
             'checkout_fees.*.percentage_rate' => ['bail', 'required_without:checkout_fees.flat_rate', 'min:0', 'max:100', 'numeric'],
 
@@ -88,8 +88,8 @@ class UpdateStoreRequest extends FormRequest
             'contact_mobile_number' => ['bail', 'nullable', 'sometimes', 'string', 'phone'],
             'whatsapp_mobile_number' => ['bail', 'nullable', 'sometimes', 'string', 'phone'],
 
-            'country' => ['bail', 'sometimes', Rule::in(collect((new CountryService)->getCountries())->map(fn($country) => $country->iso)->toArray())],
-            'currency' => ['bail', 'sometimes', Rule::in(collect((new CurrencyService)->getCurrencies())->map(fn($currency) => $currency['code'])->toArray())],
+            'country' => ['bail', 'sometimes', Rule::in(collect(CountryService::getCountries())->map(fn($country) => $country->iso)->toArray())],
+            'currency' => ['bail', 'sometimes', Rule::in(collect(MoneyService::getCurrencies())->map(fn($currency) => $currency['code'])->toArray())],
             'language' => ['bail', 'sometimes', Rule::in(collect((new LanguageService)->getLanguages())->map(fn($language) => $language['code'])->toArray())],
             'distance_unit' => ['bail', 'sometimes', Rule::in(Store::DISTANCE_UNIT_OPTIONS())],
             'weight_unit' => ['bail', 'sometimes', Rule::in(Store::WEIGHT_UNIT_OPTIONS())],

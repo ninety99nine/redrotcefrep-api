@@ -153,6 +153,7 @@ class HomeResource extends BaseResource
             new ResourceLink('show.languages', route('show.languages')),
             new ResourceLink('show.countries', route('show.countries')),
             new ResourceLink('show.currencies', route('show.currencies')),
+            new ResourceLink('convert.currency', route('convert.currency')),
             new ResourceLink('show.social.media.icons', route('show.social.media.icons')),
             new ResourceLink('show.country.address.options', route('show.country.address.options')),
 

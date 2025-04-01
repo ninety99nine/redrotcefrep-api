@@ -3,7 +3,8 @@
 use App\Models\Order;
 use App\Models\Store;
 use App\Enums\TaxMethod;
-use Illuminate\Support\Arr;
+use App\Enums\OrderStatus;
+use App\Enums\OrderPaymentStatus;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
@@ -23,24 +24,25 @@ class CreateOrdersTable extends Migration
 
             /* General Summary */
             $table->string('summary')->nullable();
-            $table->enum('status', Order::STATUSES())->default(Arr::first(Order::STATUSES()));
+            $table->enum('status', Order::STATUSES())->default(OrderStatus::WAITING->value);
             $table->char('currency', 3)->default(config('app.DEFAULT_CURRENCY'));
-            $table->decimal('subtotal', 10, 2)->default(0);
-            $table->decimal('discount_total', 10, 2)->default(0);
-            $table->decimal('subtotal_after_discount', 10, 2)->default(0);
-            $table->enum('vat_method', Store::TAX_METHOD_OPTIONS())->default(TaxMethod::INCLUSIVE);
+            $table->decimal('subtotal', 12, 3)->default(0);
+            $table->decimal('discount_total', 12, 3)->default(0);
+            $table->decimal('subtotal_after_discount', 12, 3)->default(0);
+            $table->enum('vat_method', Store::TAX_METHOD_OPTIONS())->default(TaxMethod::INCLUSIVE->value);
             $table->decimal('vat_rate', 5, 2)->default(0);
-            $table->decimal('vat_amount', 10, 2)->default(0);
-            $table->decimal('fee_total', 10, 2)->default(0);
-            $table->decimal('grand_total', 10, 2)->default(0);
+            $table->decimal('vat_amount', 12, 3)->default(0);
+            $table->decimal('fee_total', 12, 3)->default(0);
+            $table->decimal('adjustment_total', 12, 3)->default(0);
+            $table->decimal('grand_total', 12, 3)->default(0);
 
             /* Payment Information */
-            $table->enum('payment_status', Order::PAYMENT_STATUSES())->default(Arr::last(Order::PAYMENT_STATUSES()));
-            $table->decimal('paid_total', 10, 2)->default(0);
+            $table->enum('payment_status', Order::PAYMENT_STATUSES())->default(OrderPaymentStatus::UNPAID->value);
+            $table->decimal('paid_total', 12, 3)->default(0);
             $table->unsignedTinyInteger('paid_percentage')->default(0);
-            $table->decimal('pending_total', 10, 2)->default(0);
+            $table->decimal('pending_total', 12, 3)->default(0);
             $table->unsignedTinyInteger('pending_percentage')->default(0);
-            $table->decimal('outstanding_total', 10, 2)->default(0);
+            $table->decimal('outstanding_total', 12, 3)->default(0);
             $table->unsignedTinyInteger('outstanding_percentage')->default(100);
 
             /* Product Information */
@@ -69,6 +71,8 @@ class CreateOrdersTable extends Migration
             $table->string('delivery_weight_unit')->nullable();
             $table->string('delivery_weight_text')->nullable();
             $table->boolean('free_delivery')->default(false);
+            $table->foreignUuid('courier_id')->nullable();
+            $table->string('tracking_number')->nullable();
 
             $table->date('delivery_date')->nullable();
             $table->string('delivery_timeslot')->nullable();
@@ -103,7 +107,8 @@ class CreateOrdersTable extends Migration
             $table->timestamp('last_viewed_by_team_at')->nullable();
 
             /* Notes */
-            $table->text('store_note')->nullable();
+            $table->text('internal_note')->nullable();
+            $table->text('remark')->nullable();
 
             /* Other Relationships */
             $table->foreignUuid('store_id');
@@ -123,6 +128,7 @@ class CreateOrdersTable extends Migration
 
             /* Foreign Key Constraints */
             $table->foreign('store_id')->references('id')->on('stores')->cascadeOnDelete();
+            $table->foreign('courier_id')->references('id')->on('couriers')->nullOnDelete();
             $table->foreign('occasion_id')->references('id')->on('occasions')->nullOnDelete();
             $table->foreign('customer_id')->references('id')->on('customers')->nullOnDelete();
             $table->foreign('placed_by_user_id')->references('id')->on('users')->nullOnDelete();

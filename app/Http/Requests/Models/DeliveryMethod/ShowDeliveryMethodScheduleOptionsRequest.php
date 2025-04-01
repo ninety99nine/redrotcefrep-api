@@ -29,7 +29,7 @@ class ShowDeliveryMethodScheduleOptionsRequest extends FormRequest
     public function rules()
     {
         return [
-            'delivery_date' => ['bail', 'date', 'after_or_equal:today'],
+            'delivery_date' => ['bail', 'date'],
             'schedule_type' => ['sometimes', Rule::in(DeliveryMethod::DELIVERY_METHOD_SCHEDULE_TYPES())],
             'operational_hours' => ['sometimes', 'nullable', 'array'],
             'auto_generate_time_slots' => ['sometimes', 'boolean'],

@@ -51,11 +51,7 @@ class PaymentMethodRepository extends BaseRepository
                         ];
 
                         $query = PaymentMethod::select('id', 'name', 'type', 'automated_verification', 'config_schema')
-                            ->where(function ($query) use ($store) {
-                                $query->whereJsonContains('supported_countries', $store->country)
-                                    ->orWhereNull('supported_countries');
-                            })
-                            ->whereNotIn('type', $excludeTypes)
+                            ->whereIn('type', ['bank transfer', 'cash on delivery', 'store credit', 'other'])
                             ->orderBy('position')
                             ->latest();
 

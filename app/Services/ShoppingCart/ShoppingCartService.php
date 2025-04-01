@@ -6,18 +6,19 @@ use Carbon\Carbon;
 use App\Models\Store;
 use App\Models\Product;
 use App\Models\Address;
+use App\Enums\RateType;
 use App\Enums\CacheName;
 use App\Enums\TaxMethod;
-use App\Models\OrderProduct;
-use App\Enums\DiscountType;
 use App\Enums\DistanceUnit;
+use App\Models\OrderProduct;
 use App\Helpers\CacheManager;
 use App\Models\OrderPromotion;
-use App\Enums\CheckoutFeeType;
 use App\Traits\Base\BaseTrait;
 use App\Enums\StockQuantityType;
+use Illuminate\Support\Collection;
 use App\Enums\DeliveryMethodFeeType;
 use Illuminate\Support\Facades\Http;
+use App\Services\Money\MoneyService;
 use App\Enums\AllowedQuantityPerOrder;
 use App\Enums\DeliveryMethodScheduleType;
 
@@ -26,23 +27,27 @@ class ShoppingCartService
     use BaseTrait;
 
     public $store;
+    public $fees = [];
     public $vat = null;
     public $subtotal = 0;
     public $feeTotal = 0;
+    public $cartFees = [];
     public $vatRate = null;
     public $discounts = [];
     public $grandTotal = 0;
     public $currency = null;
+    public $association = null;
     public $discountTotal = 0;
-    public $tipFlatRate = null;
     public $cartProducts = [];
+    public $tipFlatRate = null;
+    public $adjustmentTotal = 0;
+    public $cartPromotions = [];
     public $shoppingCart = null;
     public $storePromotions = [];
-    public $additionalFees = [];
     public $deliveryDate = null;
     public $existingCart = null;
-    public $relatedProducts = [];
     public $freeDelivery = false;
+    public $isTeamMember = false;
     public $deliveryMethod = null;
     public $promotionCode = null;
     public $promotionName = null;
@@ -87,10 +92,15 @@ class ShoppingCartService
         $this->setStore($store);
         $this->setStorePromotions();
         $this->setStoreCurrency();
+        $this->setAssociation();
+        $this->setIsTeamMember();
 
         $this->setCartProducts();
+        $this->setCartPromotions();
+        $this->setCartFees();
         $this->setPromotionCode();
         $this->setCartTipRate();
+        $this->setAdjustment();
         $this->setAddress();
 
         $this->setExistingCustomerStatus();
@@ -120,18 +130,17 @@ class ShoppingCartService
         $this->setPromotionDiscountAppliedByCode();
         $this->applyOrderPromotionDiscounts();
         $this->calculateTaxTotals();
-        $this->calculateCustomFeeTotals();
-        $this->calculateDeliveryFeeTotals();
-        $this->calculateTipFeeTotals();
+        $this->calculateFeeTotals();
         $this->calculateGrandTotal();
 
         $vatRate = $this->convertToPercentageFormat($this->vatRate);
-        $vat = $this->convertToMoneyFormat($this->vat, $this->currency);
-        $subtotal = $this->convertToMoneyFormat($this->subtotal, $this->currency);
-        $feeTotal = $this->convertToMoneyFormat($this->feeTotal, $this->currency);
-        $grandTotal = $this->convertToMoneyFormat($this->grandTotal, $this->currency);
-        $discountTotal = $this->convertToMoneyFormat($this->discountTotal, $this->currency);
-        $subtotalAfterDiscount = $this->convertToMoneyFormat($this->subtotalAfterDiscount, $this->currency);
+        $vat = MoneyService::convertToMoneyFormat($this->vat, $this->currency);
+        $subtotal = MoneyService::convertToMoneyFormat($this->subtotal, $this->currency);
+        $feeTotal = MoneyService::convertToMoneyFormat($this->feeTotal, $this->currency);
+        $grandTotal = MoneyService::convertToMoneyFormat($this->grandTotal, $this->currency);
+        $discountTotal = MoneyService::convertToMoneyFormat($this->discountTotal, $this->currency);
+        $adjustmentTotal = MoneyService::convertToMoneyFormat($this->adjustmentTotal, $this->currency);
+        $subtotalAfterDiscount = MoneyService::convertToMoneyFormat($this->subtotalAfterDiscount, $this->currency);
 
         $miniCart = [
             'orderProducts' => $this->specifiedOrderProducts,
@@ -152,8 +161,9 @@ class ShoppingCartService
                     'rate' => $vatRate,
                     'amount' => $vat,
                 ],
-                'additional_fees' => $this->additionalFees,
+                'fees' => $this->fees,
                 'fee_total' => $feeTotal,
+                'adjustment_total' => $adjustmentTotal,
                 'grand_total' => $grandTotal,
             ],
             'totals_summary' => [
@@ -249,6 +259,26 @@ class ShoppingCartService
     }
 
     /**
+     *  Set association.
+     *
+     *  @return void
+     */
+    public function setAssociation(): void
+    {
+        $this->association = request()->has('association') ? $this->separateWordsThenLowercase(request()->input('association')) : null;
+    }
+
+    /**
+     *  Set association.
+     *
+     *  @return void
+     */
+    public function setIsTeamMember(): void
+    {
+        $this->isTeamMember = $this->association === "team member";
+    }
+
+    /**
      *  Set cart products.
      *
      *  @return void
@@ -256,6 +286,26 @@ class ShoppingCartService
     public function setCartProducts(): void
     {
         $this->cartProducts = is_string($cartProducts = request()->input('cart_products')) ? json_decode($cartProducts) : $cartProducts;
+    }
+
+    /**
+     *  Set cart promotions.
+     *
+     *  @return void
+     */
+    public function setCartPromotions(): void
+    {
+        $this->cartPromotions = is_string($cartPromotions = request()->input('cart_promotions')) ? json_decode($cartPromotions) : $cartPromotions;
+    }
+
+    /**
+     *  Set cart fees.
+     *
+     *  @return void
+     */
+    public function setCartFees(): void
+    {
+        $this->cartFees = is_string($cartFees = request()->input('cart_fees')) ? json_decode($cartFees) : $cartFees;
     }
 
     /**
@@ -283,13 +333,25 @@ class ShoppingCartService
     }
 
     /**
+     * Set adjustment.
+     *
+     * @return void
+     */
+    private function setAdjustment(): void
+    {
+        if($this->isTeamMember) {
+            $this->adjustmentTotal = request()->has('adjustment') ? (float) request()->input('adjustment') : 0;
+        }
+    }
+
+    /**
      *  Set delivery address.
      *
      *  @return void
      */
     public function setAddress(): void
     {
-        if(request()->has('delivery_address')) {
+        if(request()->has('delivery_address') && request()->filled('delivery_address')) {
 
             $attributes = request()->input('delivery_address');
 
@@ -398,7 +460,7 @@ class ShoppingCartService
     public function setExistingShoppingCartFromCache(): void
     {
         //  Check if the shopping cart exists in memory (cached)
-        if($this->getShoppingCartCacheManager()->has()){
+        if($this->getShoppingCartCacheManager()->has()) {
 
             //  Get the shopping cart stored in memory (cached)
             $this->existingCart = $this->getShoppingCartCacheManager()->get();
@@ -442,14 +504,8 @@ class ShoppingCartService
     public function setSpecifiedOrderProducts(): void
     {
         $cartProductIds = $this->cartProductIds();
-        if(empty($cartProductIds)) return;
-
-        $this->relatedProducts = Product::forStore($this->store->id)
-            ->whereIn('id', $cartProductIds)
-            ->doesNotSupportVariations()
-            ->get();
-
-        $this->specifiedOrderProducts = $this->mapRelatedProductsToOrderProducts();
+        $relatedProducts = $this->getRelatedProducts($cartProductIds);
+        $this->specifiedOrderProducts = $this->mapCartProductsToOrderProducts($relatedProducts);
     }
 
     /**
@@ -459,141 +515,339 @@ class ShoppingCartService
      */
     public function cartProductIds(): array
     {
-        return collect($this->cartProducts)->pluck('id')->toArray();
+        return collect($this->cartProducts)->pluck('id')->filter()->unique()->toArray();
     }
 
     /**
-     *  Map related products to order products.
+     *  Get related products.
+     *
+     *  @param array $cartProductIds
+     *  @return Collection
+     */
+    public function getRelatedProducts(array $cartProductIds): Collection
+    {
+        return $cartProductIds
+            ? Product::forStore($this->store->id)
+                ->whereIn('id', $cartProductIds)
+                ->doesNotSupportVariations()
+                ->get()->keyBy('id')
+            : collect();
+    }
+
+    /**
+     *  Map cart products to order products.
      *
      *  @return array
      */
-    protected function mapRelatedProductsToOrderProducts(): array
+    protected function mapCartProductsToOrderProducts($relatedProducts): array
     {
-        return collect($this->relatedProducts)
-            ->map(fn($relatedProduct) => $this->mapToOrderProduct($relatedProduct))
-            ->all();
+        return collect($this->cartProducts)->map(function($cartProduct) use ($relatedProducts) {
+            return $this->mapCartProductToOrderProduct($cartProduct, $relatedProducts);
+        })->filter()->all();
     }
 
     /**
-     *  Map a related product to a order product.
+     *  Map a cart product to an order product.
      *
-     *  @param Product $relatedProduct The related product.
+     *  @param array $cartProduct
+     *  @param Collection $relatedProducts
      *  @return OrderProduct|null
      */
-    protected function mapToOrderProduct($relatedProduct): ?OrderProduct
+    protected function mapCartProductToOrderProduct(array $cartProduct, $relatedProducts): ?OrderProduct
     {
-        $existingOrderProduct = collect($this->existingOrderProducts)->firstWhere('product_id', $relatedProduct->id);
+        $productId = $cartProduct['id'] ?? null;
 
-        $orderProduct = $this->prepareOrderProduct($relatedProduct);
-        $orderProduct = $this->detectChangesAgainstRelatedProduct($orderProduct, $relatedProduct, $existingOrderProduct);
-        $orderProduct = $this->detectChangesAgainstExistingOrderProduct($orderProduct, $existingOrderProduct);
+        // If no ID and not a team member, ignore the product
+        if(!$productId && !$this->isTeamMember) return null;
+
+        // Retrieve the related product from the pre-fetched collection
+        $relatedProduct = $productId ? $relatedProducts->get($productId) : null;
+
+        // If product ID is provided but not found, create a mock OrderProduct if the user is a team member
+        if($productId && !$relatedProduct && !$this->isTeamMember) return null;
+
+        $existingOrderProduct = $relatedProduct ? collect($this->existingOrderProducts)->firstWhere('product_id', $relatedProduct->id) : null;
+
+        $orderProduct = $this->prepareOrderProduct($relatedProduct, $cartProduct);
+        if($relatedProduct) $orderProduct = $this->detectChangesAgainstRelatedProduct($orderProduct, $relatedProduct, $existingOrderProduct);
+        if($existingOrderProduct) $orderProduct = $this->detectChangesAgainstExistingOrderProduct($orderProduct, $existingOrderProduct);
 
         return $orderProduct;
     }
 
     /**
-     *  Calculate the quantity of a order product.
+     * Prepare order product.
      *
-     *  @param Product $relatedProduct The related product.
+     * @param Product|null $relatedProduct
+     * @param array $cartProduct
+     * @return OrderProduct
+     */
+    private function prepareOrderProduct($relatedProduct, array $cartProduct): OrderProduct
+    {
+        $originalQuantity = $cartProduct['quantity'];
+        [$quantity, $hasStock, $hasLimitedStock, $hasExceededMaximumAllowedQuantityPerOrder] = $this->calculateOrderProductQuantity($relatedProduct, $originalQuantity);
+
+        $baseAttributes = [
+            'unit_regular_price' => 0,
+            'unit_sale_price' => 0,
+            'unit_cost_price' => 0,
+            'is_free' => false
+        ];
+
+        $relatedProductAttributes = $relatedProduct ? $relatedProduct->getAttributes() : [];
+
+        $cartProductAttributes = $this->isTeamMember ? $orderProductAttributes = array_merge(
+            collect($cartProduct)->only([
+                'name', 'description', 'unit_weight', 'is_free',
+                'unit_regular_price', 'unit_sale_price', 'unit_cost_price'
+            ])->toArray()
+        ) : [];
+
+        $orderProductAttributes = array_merge(
+            $baseAttributes,
+            $relatedProductAttributes,
+            [
+                'id' => null,
+                'quantity' => $quantity,
+                'is_cancelled' => false,
+                'detected_changes' => [],
+                'cancellation_reasons' => [],
+                'store_id' => $this->store->id,
+                'currency' => $this->store->currency,
+                'product_id' => $relatedProduct?->id,
+                'has_limited_stock' => $hasLimitedStock,
+                'original_quantity' => $originalQuantity,
+                'has_exceeded_maximum_allowed_quantity_per_order' => $hasExceededMaximumAllowedQuantityPerOrder,
+            ],
+            $cartProductAttributes
+        );
+
+        $orderProductAttributes = array_merge($orderProductAttributes, [
+            'on_sale' => $this->determineIfOrderProductOnSale($orderProductAttributes),
+            'unit_price' => $this->calculateOrderProductUnitPrice($orderProductAttributes),
+
+            'unit_sale_discount' => $this->calculateOrderProductUnitSaleDiscount($orderProductAttributes),
+            'unit_sale_discount_percentage' => $this->calculateOrderProductUnitSaleDiscountPercentage($orderProductAttributes),
+
+            'unit_profit' => $this->calculateOrderProductUnitProfit($orderProductAttributes),
+            'unit_profit_percentage' => $this->calculateOrderProductUnitProfitPercentage($orderProductAttributes),
+
+            'unit_loss' => $this->calculateOrderProductUnitLoss($orderProductAttributes),
+            'unit_loss_percentage' => $this->calculateOrderProductUnitLossPercentage($orderProductAttributes),
+
+            'has_price' => $this->determineIfOrderProductHasPrice($orderProductAttributes)
+        ]);
+
+        $orderProductAttributes = array_merge($orderProductAttributes, [
+            'subtotal' => $this->calculateOrderProductSubtotal($orderProductAttributes, $quantity),
+            'grand_total' => $this->calculateOrderProductGrandTotal($orderProductAttributes, $quantity),
+            'sale_discount_total' => $this->calculateOrderProductSaleDiscountTotal($orderProductAttributes, $quantity)
+        ]);
+
+        $orderProduct = new OrderProduct($orderProductAttributes);
+
+        return $orderProduct;
+    }
+
+    /**
+     *  Determine if the order product is on sale.
+     *
+     *  @param array $orderProductAttributes
+     *  @return bool
+     */
+    protected function determineIfOrderProductOnSale(array $orderProductAttributes): bool
+    {
+        return !$orderProductAttributes['is_free']
+               && ($orderProductAttributes['unit_sale_price'] != 0)
+               && ($orderProductAttributes['unit_regular_price'] != 0)
+               && ($orderProductAttributes['unit_sale_price'] < $orderProductAttributes['unit_regular_price']);
+    }
+
+    /**
+     *  Calculate the order product unit price.
+     *
+     *  @param array $orderProductAttributes
+     *  @return float
+     */
+    public function calculateOrderProductUnitPrice(array $orderProductAttributes): float
+    {
+        if($orderProductAttributes['is_free']) return 0;
+        return $this->determineIfOrderProductOnSale($orderProductAttributes) ? $orderProductAttributes['unit_sale_price'] : $orderProductAttributes['unit_regular_price'];
+    }
+
+    /**
+     *  Calculate the order product unit sale discount.
+     *
+     *  @param array $orderProductAttributes
+     *  @return float
+     */
+    public function calculateOrderProductUnitSaleDiscount(array $orderProductAttributes): float
+    {
+        if(!$this->determineIfOrderProductOnSale($orderProductAttributes)) return 0;
+        return ($difference = ($orderProductAttributes['unit_regular_price'] - $orderProductAttributes['unit_sale_price'])) >= 0 ? $difference : 0;
+    }
+
+    /**
+     *  Calculate the order product unit sale discount percentage.
+     *
+     *  @param array $orderProductAttributes
+     *  @return float
+     */
+    public function calculateOrderProductUnitSaleDiscountPercentage(array $orderProductAttributes): float
+    {
+        if( ($unitSaleDiscount = $this->calculateOrderProductUnitSaleDiscount($orderProductAttributes)) == 0 ) return 0;
+
+        $percentage = ($unitSaleDiscount / $orderProductAttributes['unit_regular_price']) * 100;
+
+        return round($percentage);
+    }
+
+    /**
+     *  Calculate the order product unit profit.
+     *
+     *  @param array $orderProductAttributes
+     *  @return float
+     */
+    public function calculateOrderProductUnitProfit(array $orderProductAttributes): float
+    {
+        $unitPrice = $this->calculateOrderProductUnitPrice($orderProductAttributes);
+        return ($difference = ($unitPrice - $orderProductAttributes['unit_cost_price'])) >= 0 ? $difference : 0;
+    }
+
+    /**
+     *  Calculate the order product unit percentage profit.
+     *
+     *  @param array $orderProductAttributes
+     *  @return float
+     */
+    public function calculateOrderProductUnitProfitPercentage(array $orderProductAttributes): float
+    {
+        //  If it costs us nothing then we make a full profit
+        if( $orderProductAttributes['unit_cost_price'] == 0 ) return 100;
+
+        $unitProfit = $this->calculateOrderProductUnitProfit($orderProductAttributes);
+
+        $percentage = ($unitProfit / $orderProductAttributes['unit_cost_price']) * 100;
+
+        return round($percentage);
+    }
+
+    /**
+     *  Calculate the order product unit loss.
+     *
+     *  @param array $orderProductAttributes
+     *  @return float
+     */
+    public function calculateOrderProductUnitLoss(array $orderProductAttributes): float
+    {
+        $unitPrice = $this->calculateOrderProductUnitPrice($orderProductAttributes);
+        return ($difference = ($unitPrice - $orderProductAttributes['unit_cost_price'])) < 0 ? -$difference : 0;
+    }
+
+    /**
+     *  Calculate the order product unit loss percentage.
+     *
+     *  @param array $orderProductAttributes
+     *  @return float
+     */
+    public function calculateOrderProductUnitLossPercentage(array $orderProductAttributes): float
+    {
+        //  If it costs us nothing then we cannot make a loss
+        if( $orderProductAttributes['unit_cost_price'] == 0 ) return 0;
+
+        $unitLoss = $this->calculateOrderProductUnitLoss($orderProductAttributes);
+
+        $percentage = ($unitLoss / $orderProductAttributes['unit_cost_price']) * 100;
+
+        return round($percentage);
+    }
+
+    /**
+     *  Determine if the order product has a price.
+     *
+     *  @param array $orderProductAttributes
+     *  @return float
+     */
+    public function determineIfOrderProductHasPrice(array $orderProductAttributes): float
+    {
+        $unitPrice = $this->calculateOrderProductUnitPrice($orderProductAttributes);
+        return !$orderProductAttributes['is_free'] && $unitPrice > 0;
+    }
+
+    /**
+     *  Calculate the quantity of an order product.
+     *
+     *  @param Product|null $relatedProduct The related product.
      *  @param int $originalQuantity The original quantity from the cart.
      *  @return array
      */
-    protected function calculateOrderProductQuantity($relatedProduct, int $originalQuantity): array
+    protected function calculateOrderProductQuantity(Product|null $relatedProduct, int $originalQuantity): array
     {
+        $hasStock = true;
         $hasLimitedStock = false;
         $quantity = $originalQuantity;
-        $hasStock = $relatedProduct->has_stock;
         $hasExceededMaximumAllowedQuantityPerOrder = false;
 
-        if($relatedProduct->stock_quantity_type == StockQuantityType::LIMITED->value){
+        if($relatedProduct) {
 
-            $stockQuantity = $relatedProduct->stock_quantity;
-            $hasLimitedStock = $stockQuantity > 0 && $stockQuantity < $quantity;
+            $hasStock = $relatedProduct->has_stock;
 
-            if($hasStock && $hasLimitedStock){
-                $quantity = $stockQuantity; // Limited stock, reduce quantity
+            if($relatedProduct->stock_quantity_type == StockQuantityType::LIMITED->value){
+
+                $stockQuantity = $relatedProduct->stock_quantity;
+                $hasLimitedStock = $stockQuantity > 0 && $stockQuantity < $quantity;
+
+                if($hasStock && $hasLimitedStock){
+                    $quantity = $stockQuantity; // Limited stock, reduce quantity
+                }
+
             }
 
-        }
+            if($relatedProduct->allowed_quantity_per_order == AllowedQuantityPerOrder::LIMITED->value){
+                $maximumAllowedQuantityPerOrder = $relatedProduct->maximum_allowed_quantity_per_order;
+                if($hasStock) $quantity = min($quantity, $maximumAllowedQuantityPerOrder);
+                $hasExceededMaximumAllowedQuantityPerOrder = true;
+            }
 
-        if($relatedProduct->allowed_quantity_per_order == AllowedQuantityPerOrder::LIMITED->value){
-            $maximumAllowedQuantityPerOrder = $relatedProduct->maximum_allowed_quantity_per_order;
-            if($hasStock) $quantity = min($quantity, $maximumAllowedQuantityPerOrder);
-            $hasExceededMaximumAllowedQuantityPerOrder = true;
         }
 
         return [$quantity, $hasStock, $hasLimitedStock, $hasExceededMaximumAllowedQuantityPerOrder];
     }
 
     /**
-     *  Calculate the subtotal of a order product.
+     *  Calculate the subtotal of an order product.
      *
-     *  @param Product $relatedProduct The related product.
-     *  @param int $quantity The quantity of the order product.
+     *  @param array $orderProductAttributes
+     *  @param int $quantity
      *  @return float
      */
-    protected function calculateOrderProductSubtotal($relatedProduct, int $quantity): float
+    protected function calculateOrderProductSubtotal(array $orderProductAttributes, int $quantity): float
     {
-        return $relatedProduct->getRawOriginal('unit_regular_price') * $quantity;
+        return $orderProductAttributes['unit_regular_price'] * $quantity;
     }
 
     /**
-     *  Calculate the grand total of a order product.
+     *  Calculate the grand total of an order product.
      *
-     *  @param Product $relatedProduct The related product.
-     *  @param int $quantity The quantity of the order product.
+     *  @param array $orderProductAttributes
+     *  @param int $quantity
      *  @return float
      */
-    protected function calculateOrderProductGrandTotal($relatedProduct, int $quantity): float
+    protected function calculateOrderProductGrandTotal(array $orderProductAttributes, int $quantity): float
     {
-        return $relatedProduct->getRawOriginal('unit_price') * $quantity;
+        return $orderProductAttributes['unit_price'] * $quantity;
     }
 
     /**
-     *  Calculate the total sale discount for a order product.
+     *  Calculate the total sale discount for an order product.
      *
-     *  @param Product $relatedProduct The related product.
-     *  @param int $quantity The quantity of the order product.
+     *  @param array $orderProductAttributes
+     *  @param int $quantity
      *  @return float
      */
-    protected function calculateOrderProductSaleDiscountTotal($relatedProduct, int $quantity): float
+    protected function calculateOrderProductSaleDiscountTotal(array $orderProductAttributes, int $quantity): float
     {
-        return $relatedProduct->getRawOriginal('unit_sale_discount') * $quantity;
-    }
-
-    /**
-     * Prepare order product.
-     *
-     * @param Product $relatedProduct The related product.
-     * @return OrderProduct
-     */
-    private function prepareOrderProduct($relatedProduct): OrderProduct
-    {
-        $cartProduct = collect($this->cartProducts)->first(fn($cartProduct) => $relatedProduct->id == $cartProduct['id']);
-
-        $originalQuantity = $cartProduct['quantity'];
-        [$quantity, $hasStock, $hasLimitedStock, $hasExceededMaximumAllowedQuantityPerOrder] = $this->calculateOrderProductQuantity($relatedProduct, $originalQuantity);
-
-        $subtotal = $this->calculateOrderProductSubtotal($relatedProduct, $quantity);
-        $grandTotal = $this->calculateOrderProductGrandTotal($relatedProduct, $quantity);
-        $saleDiscountTotal = $this->calculateOrderProductSaleDiscountTotal($relatedProduct, $quantity);
-
-        $orderProduct = new OrderProduct(array_merge($relatedProduct->getAttributes(), [
-            'quantity' => $quantity,
-            'is_cancelled' => false,
-            'subtotal' => $subtotal,
-            'detected_changes' => [],
-            'grand_total' => $grandTotal,
-            'cancellation_reasons' => [],
-            'store_id' => $this->store->id,
-            'product_id' => $relatedProduct->id,
-            'has_limited_stock' => $hasLimitedStock,
-            'original_quantity' => $originalQuantity,
-            'sale_discount_total' => $saleDiscountTotal,
-            'has_exceeded_maximum_allowed_quantity_per_order' => $hasExceededMaximumAllowedQuantityPerOrder,
-        ]));
-
-        return $orderProduct;
+        return $orderProductAttributes['unit_sale_discount'] * $quantity;
     }
 
     /**
@@ -702,13 +956,11 @@ class ShoppingCartService
      * Detect changes against the existing order product.
      *
      * @param OrderProduct $orderProduct
-     * @param OrderProduct|null $existingOrderProduct
+     * @param OrderProduct $existingOrderProduct
      * @return OrderProduct
      */
-    protected function detectChangesAgainstExistingOrderProduct(OrderProduct $orderProduct, ?OrderProduct $existingOrderProduct): OrderProduct
+    protected function detectChangesAgainstExistingOrderProduct(OrderProduct $orderProduct, OrderProduct $existingOrderProduct): OrderProduct
     {
-        if(!$existingOrderProduct) return $orderProduct;
-
         $this->handleExceededToNotExceededMaximumAllowedQuantityPerOrderChanges($orderProduct, $existingOrderProduct);
         $this->handleNoStockToEnoughStockChanges($orderProduct, $existingOrderProduct);
         $this->handleNoStockToLimitedStockChanges($orderProduct, $existingOrderProduct);
@@ -1119,7 +1371,66 @@ class ShoppingCartService
             return;
         }
 
-        $this->specifiedOrderPromotions = $this->mapRelatedPromotionsToOrderPromotions();
+        if($this->isTeamMember) {
+            $this->specifiedOrderPromotions = $this->mapTeamMemberProvidedPromotions();
+        } else {
+            $this->specifiedOrderPromotions = $this->mapRelatedPromotionsToOrderPromotions();
+        }
+    }
+
+    /**
+     *  Map team member provided promotions.
+     *
+     *  @return array
+     */
+    protected function mapTeamMemberProvidedPromotions(): array
+    {
+        return collect($this->cartPromotions)->map(function ($cartPromotion) {
+            return $this->mapToOrderPromotionFromTeamMember($cartPromotion);
+        })->filter()->all();
+    }
+
+    /**
+     * Map a team member's provided promotion to an OrderPromotion.
+     *
+     * @param array $cartPromotion
+     * @return OrderPromotion
+     */
+    private function mapToOrderPromotionFromTeamMember(array $cartPromotion): OrderPromotion
+    {
+        $promotionId = $cartPromotion['id'] ?? null;
+
+        // Find existing promotion if an ID is provided
+        $relatedPromotion = $promotionId ? $this->store->promotions()->find($promotionId) : null;
+
+        // Base attributes from existing promotion if found
+        $baseAttributes = $relatedPromotion ? $relatedPromotion->getAttributes() : [
+            'offer_discount' => false,
+            'offer_free_delivery' => false,
+            'discount_percentage_rate' => 0,
+            'discount_flat_rate' => "0.00",
+            'discount_rate_type' => RateType::FLAT->value
+        ];
+
+        // Merge team member's provided attributes (overrides existing ones)
+        $orderPromotionAttributes = array_merge(
+            $baseAttributes,
+            collect($cartPromotion)->only([
+                'name', 'description', 'offer_discount', 'offer_free_delivery',
+                'discount_rate_type', 'discount_percentage_rate', 'discount_flat_rate'
+            ])->toArray(),
+            [
+                'id' => null,
+                'is_cancelled' => false,
+                'detected_changes' => [],
+                'cancellation_reasons' => [],
+                'store_id' => $this->store->id,
+                'currency' => $this->store->currency,
+                'promotion_id' => $relatedPromotion?->id,
+            ]
+        );
+
+        return new OrderPromotion($orderPromotionAttributes);
     }
 
     /**
@@ -1182,7 +1493,7 @@ class ShoppingCartService
         }
 
         if($storePromotion->activate_using_minimum_grand_total && $this->subtotalAfterDiscount < $storePromotion->minimum_grand_total->amount){
-            $subtotalAfterDiscount = $this->convertToMoneyFormat($this->subtotalAfterDiscount, $this->currency);
+            $subtotalAfterDiscount = MoneyService::convertToMoneyFormat($this->subtotalAfterDiscount, $this->currency);
             $invalidate('Required a minimum grand total of ' . $storePromotion->minimum_grand_total->amountWithCurrency .
                 ' but the cart total was valued at ' . $subtotalAfterDiscount->amountWithCurrency);
         }
@@ -1374,29 +1685,28 @@ class ShoppingCartService
         if($this->canApplyPromotionCode) {
 
             $discountingOrderPromotion = collect($this->getSpecifiedUnCancelledOrderPromotions())->first(function ($orderPromotion) {
-                $promotion = collect($this->storePromotions)->firstWhere('id', $orderPromotion->promotion_id);
-                return $promotion->offer_discount && $promotion->activate_using_code && $promotion->code == $this->promotionCode;
+                return $orderPromotion->offer_discount && $orderPromotion->activate_using_code && $orderPromotion->code == $this->promotionCode;
             });
 
             if($discountingOrderPromotion) {
                 $this->promotionApplied = true;
                 $this->promotionName = $discountingOrderPromotion->name;
 
-                if($discountingOrderPromotion->discount_type == DiscountType::FIXED->value) {
-                    $totalDiscount = $this->convertToMoneyFormat($discountingOrderPromotion->discount_fixed_rate->amount, $this->currency);
+                if($discountingOrderPromotion->discount_rate_type == RateType::FLAT->value) {
+                    $totalDiscount = MoneyService::convertToMoneyFormat($discountingOrderPromotion->discount_flat_rate->amount, $this->currency);
                     $this->promotionMessage = 'A discount of'.$totalDiscount->amountWithCurrency.' has been applied';
-                }else if($discountingOrderPromotion->discount_type == DiscountType::PERCENTAGE->value) {
-                    $totalDiscount = $this->convertToMoneyFormat($this->subtotalAfterDiscount * ($discountingOrderPromotion->discount_percentage_rate / 100), $this->currency);
-                    $this->promotionMessage = 'A 10% discount ('.$totalDiscount->amountWithCurrency.') has been applied';
+                }else if($discountingOrderPromotion->discount_rate_type == RateType::PERCENTAGE->value) {
+                    $totalDiscount = MoneyService::convertToMoneyFormat($this->subtotalAfterDiscount * ($discountingOrderPromotion->discount_percentage_rate / 100), $this->currency);
+                    $this->promotionMessage = 'A '.($discountingOrderPromotion->discount_percentage_rate).'% discount ('.$totalDiscount->amountWithCurrency.') has been applied';
                 }
 
                 $otherTotalDiscount = collect($this->getSpecifiedUnCancelledOrderPromotions())->filter(function ($orderPromotion) {
                     $promotion = collect($this->storePromotions)->firstWhere('id', $orderPromotion->promotion_id);
                     return $promotion->offer_discount && !$promotion->activate_using_code;
                 })->sum(function ($orderPromotion) {
-                    if($orderPromotion->discount_type == DiscountType::FIXED->value) {
-                        $totalDiscount = $orderPromotion->discount_fixed_rate->amount;
-                    }else if($orderPromotion->discount_type == DiscountType::PERCENTAGE->value) {
+                    if($orderPromotion->discount_rate_type == RateType::FLAT->value) {
+                        $totalDiscount = $orderPromotion->discount_flat_rate->amount;
+                    }else if($orderPromotion->discount_rate_type == RateType::PERCENTAGE->value) {
                         $totalDiscount = $this->subtotalAfterDiscount * ($orderPromotion->discount_percentage_rate / 100);
 
                     }
@@ -1404,7 +1714,7 @@ class ShoppingCartService
                 });
 
                 if($otherTotalDiscount > 0) {
-                    $otherTotalDiscount = $this->convertToMoneyFormat($otherTotalDiscount, $this->currency);
+                    $otherTotalDiscount = MoneyService::convertToMoneyFormat($otherTotalDiscount, $this->currency);
                     $this->promotionMessage .= ', along with additional discounts of '.$otherTotalDiscount->amountWithCurrency.' from other offers.';
                 }
 
@@ -1550,11 +1860,11 @@ class ShoppingCartService
 
             if(!$this->deliveryDate){
                 $disqualify('The delivery date is required');
-            }else if(!$this->deliveryMethod->isValidDate($this->deliveryDate)){
+            }else if(!$this->isTeamMember && !$this->deliveryMethod->isValidDate($this->deliveryDate)){
                 $disqualify('The selected delivery date is unavailable');
             }else if($this->deliveryMethod->schedule_type == DeliveryMethodScheduleType::DATE_AND_TIME->value && !$this->deliveryTimeslot){
                 $disqualify('The delivery time is required');
-            }else if($this->deliveryMethod->schedule_type == DeliveryMethodScheduleType::DATE_AND_TIME->value && !$this->deliveryMethod->isValidTimeSlot($this->deliveryDate, $this->deliveryTimeslot)){
+            }else if(!$this->isTeamMember && $this->deliveryMethod->schedule_type == DeliveryMethodScheduleType::DATE_AND_TIME->value && !$this->deliveryMethod->isValidTimeSlot($this->deliveryDate, $this->deliveryTimeslot)){
                 $disqualify('The selected delivery time is unavailable');
             }
 
@@ -1615,9 +1925,9 @@ class ShoppingCartService
         collect($this->getSpecifiedUnCancelledOrderPromotions())->each(function($orderPromotion) use (&$discounts) {
             if(!$orderPromotion->offer_discount) return;
 
-            if($orderPromotion->discount_type == DiscountType::FIXED->value) {
-                $totalDiscount = $orderPromotion->discount_fixed_rate->amount;
-            }else if($orderPromotion->discount_type == DiscountType::PERCENTAGE->value) {
+            if($orderPromotion->discount_rate_type == RateType::FLAT->value) {
+                $totalDiscount = $orderPromotion->discount_flat_rate->amount;
+            }else if($orderPromotion->discount_rate_type == RateType::PERCENTAGE->value) {
                 $totalDiscount = $this->subtotalAfterDiscount * ($orderPromotion->discount_percentage_rate / 100);
             }
 
@@ -1642,7 +1952,7 @@ class ShoppingCartService
         // Update or add the discount
         $this->discounts[$name] = [
             'name' => ucfirst($name),
-            'amount' => $this->convertToMoneyFormat(($this->discounts[$name]['amount']->amount ?? 0) + $amount, $this->currency)
+            'amount' => MoneyService::convertToMoneyFormat(($this->discounts[$name]['amount']->amount ?? 0) + $amount, $this->currency)
         ];
 
         // Update totals
@@ -1653,14 +1963,23 @@ class ShoppingCartService
     /**
      * Add fee.
      *
+     * @param array $data
      * @return void
      */
-    private function addFee($name, $amount, $keyName = null): void
+    private function addFee(array $data): void
     {
+        $name = $data['name'];
+        $amount = $data['amount'];
+        $keyName = $data['key_name'];
+        $rateType = $data['rate_type'];
+        $percentageRate = $data['percentage_rate'];
+
         // Update or add the fee
-        $this->additionalFees[$keyName ?? $name] = [
+        $this->fees[$keyName ?? $name] = [
             'name' => ucfirst($name),
-            'amount' => $this->convertToMoneyFormat(($this->additionalFees[$name]['amount']->amount ?? 0) + $amount, $this->currency)
+            'rate_type' => $rateType,
+            'percentage_rate' => $percentageRate,
+            'amount' => MoneyService::convertToMoneyFormat(($this->fees[$name]['amount']->amount ?? 0) + $amount, $this->currency)
         ];
 
         // Update totals
@@ -1677,10 +1996,39 @@ class ShoppingCartService
         $this->vatRate = $this->store->tax_percentage_rate;
 
         if($this->store->tax_method == TaxMethod::EXCLUSIVE->value) {
-            $this->vat = round($this->subtotalAfterDiscount * ($this->store->tax_percentage_rate / 100), 2);
+            $this->vat = $this->subtotalAfterDiscount * ($this->store->tax_percentage_rate / 100);
         }else{
-            $this->vat = round($this->subtotalAfterDiscount * ($this->vatRate / (100 + $this->vatRate)), 2);
+            $this->vat = $this->subtotalAfterDiscount * ($this->vatRate / (100 + $this->vatRate));
         }
+    }
+
+    /**
+     * Calculate fee totals.
+     *
+     * @return void
+     */
+    private function calculateFeeTotals(): void
+    {
+        if($this->isTeamMember) {
+            $this->calculateCartFeeTotals();
+        }else{
+            $this->calculateCustomFeeTotals();
+            $this->calculateDeliveryFeeTotals();
+            $this->calculateTipFeeTotals();
+        }
+    }
+
+    /**
+     * Calculate cart fee totals.
+     *
+     * @return void
+     */
+    private function calculateCartFeeTotals(): void
+    {
+        collect($this->cartFees)->each(function($cartFee) {
+            $this->handleCartFlatFee($cartFee);
+            $this->handleCartPercentageFee($cartFee);
+        });
     }
 
     /**
@@ -1697,6 +2045,66 @@ class ShoppingCartService
     }
 
     /**
+     * Handle cart flat fee.
+     *
+     * @param array $cartFee
+     * @return void
+     */
+    private function handleCartFlatFee(array $cartFee): void
+    {
+        $name = $cartFee['name'];
+        $active = $cartFee['active'];
+        $rateType = $cartFee['rate_type'];
+        $flatRate = $cartFee['flat_rate'];
+
+        if(empty($name) || $active !== true) return;
+
+        if($rateType == RateType::FLAT->value) {
+
+            $data = [
+                'name' => $name,
+                'key_name' => null,
+                'amount' => $flatRate,
+                'rate_type' => $rateType,
+                'percentage_rate' => null
+            ];
+
+            $this->addFee($data);
+        }
+    }
+
+    /**
+     * Handle cart percentage fee.
+     *
+     * @param array $cartFee
+     * @return void
+     */
+    private function handleCartPercentageFee(array $cartFee): void
+    {
+        $name = $cartFee['name'];
+        $active = $cartFee['active'];
+        $rateType = $cartFee['rate_type'];
+        $percentageRate = $cartFee['percentage_rate'];
+
+        if(empty($name) || $active !== true) return;
+
+        if($rateType == RateType::PERCENTAGE->value) {
+
+            $amount = $this->subtotalAfterDiscount * ($percentageRate / 100);
+
+            $data = [
+                'name' => $name,
+                'amount' => $amount,
+                'key_name' => null,
+                'rate_type' => $rateType,
+                'percentage_rate' => $percentageRate
+            ];
+
+            $this->addFee($data);
+        }
+    }
+
+    /**
      * Handle custom flat fee.
      *
      * @param array $checkoutFee
@@ -1705,12 +2113,20 @@ class ShoppingCartService
     private function handleCustomFlatFee(array $checkoutFee): void
     {
         $name = $checkoutFee['name'];
-        $type = $checkoutFee['type'];
-        $flatRate = $checkoutFee['flat_rate'];
+        $rateType = $checkoutFee['rate_type'];
+        $amount = $checkoutFee['flat_rate']->amount;
 
-        if($type == CheckoutFeeType::FLAT->value) {
-            $feeAmount = (float) $flatRate;
-            $this->addFee($name, $feeAmount);
+        if($rateType == RateType::FLAT->value) {
+
+            $data = [
+                'name' => $name,
+                'amount' => $amount,
+                'key_name' => null,
+                'rate_type' => $rateType,
+                'percentage_rate' => null
+            ];
+
+            $this->addFee($data);
         }
     }
 
@@ -1723,12 +2139,22 @@ class ShoppingCartService
     private function handleCustomPercentageFee(array $checkoutFee): void
     {
         $name = $checkoutFee['name'];
-        $type = $checkoutFee['type'];
-        $percentageRate = $checkoutFee['percentage_rate'];
+        $rateType = $checkoutFee['rate_type'];
+        $percentageRate = $checkoutFee['percentage_rate']['value'];
 
-        if($type == CheckoutFeeType::PERCENTAGE->value) {
-            $feeAmount = $this->subtotalAfterDiscount * ($percentageRate / 100);
-            $this->addFee($name, $feeAmount);
+        if($rateType == RateType::PERCENTAGE->value) {
+
+            $amount = $this->subtotalAfterDiscount * ($percentageRate / 100);
+
+            $data = [
+                'name' => $name,
+                'amount' => $amount,
+                'key_name' => null,
+                'rate_type' => $rateType,
+                'percentage_rate' => $percentageRate
+            ];
+
+            $this->addFee($data);
         }
     }
 
@@ -1757,7 +2183,20 @@ class ShoppingCartService
     private function handleDeliveryFlatFee(): void
     {
         if($this->deliveryMethod->fee_type != DeliveryMethodFeeType::FLAT_FEE->value) return;
-        $this->addFee('Delivery fee', $this->freeDelivery ? 0 : $this->deliveryMethod->flat_fee_rate->amount);
+
+        $name = 'Delivery fee';
+        $rateType = RateType::FLAT->value;
+        $amount = $this->freeDelivery ? 0 : $this->deliveryMethod->flat_fee_rate->amount;
+
+        $data = [
+            'name' => $name,
+            'amount' => $amount,
+            'key_name' => null,
+            'rate_type' => $rateType,
+            'percentage_rate' => null
+        ];
+
+        $this->addFee($data);
     }
 
     /**
@@ -1768,7 +2207,21 @@ class ShoppingCartService
     private function handleDeliveryPercentageFee(): void
     {
         if($this->deliveryMethod->fee_type != DeliveryMethodFeeType::PERCENTAGE_FEE->value) return;
-        $this->addFee('Delivery fee', $this->freeDelivery ? 0 : $this->subtotalAfterDiscount * ($this->deliveryMethod->percentage_fee_rate / 100));
+
+        $name = 'Delivery fee';
+        $rateType = RateType::PERCENTAGE->value;
+        $percentageRate = $this->deliveryMethod->percentage_fee_rate;
+        $amount = $this->freeDelivery ? 0 : $this->subtotalAfterDiscount * ($percentageRate / 100);
+
+        $data = [
+            'name' => $name,
+            'amount' => $amount,
+            'key_name' => null,
+            'rate_type' => $rateType,
+            'percentage_rate' => $percentageRate
+        ];
+
+        $this->addFee($data);
     }
 
     /**
@@ -1801,8 +2254,22 @@ class ShoppingCartService
             foreach ($this->deliveryMethod->distance_zones as $zone) {
 
                 if($this->deliveryDistance['value'] <= $zone['distance']) {
-                    $this->addFee('Delivery fee ('.$this->deliveryDistance['text'].')', $this->freeDelivery ? 0 : $zone['fee'], 'Delivery fee');
+
+                    $rateType = RateType::FLAT->value;
+                    $amount = $this->freeDelivery ? 0 : $zone['fee'];
+                    $name = 'Delivery fee ('.$this->deliveryDistance['text'].')';
+
+                    $data = [
+                        'name' => $name,
+                        'amount' => $amount,
+                        'rate_type' => $rateType,
+                        'percentage_rate' => null,
+                        'key_name' => 'Delivery fee',
+                    ];
+
+                    $this->addFee($data);
                     return;
+
                 }
 
             }
@@ -1836,7 +2303,20 @@ class ShoppingCartService
             foreach ($this->deliveryMethod->postal_code_zones as $zone) {
                 foreach ($zone['postal_codes'] as $postalCode) {
                     if($this->isPostalCodeMatch($customerPostalCode, $postalCode)) {
-                        $this->addFee('Delivery fee (Zone ' . $postalCode . ')', $this->freeDelivery ? 0 : $zone['fee'], 'Delivery fee');
+
+                        $rateType = RateType::FLAT->value;
+                        $amount = $this->freeDelivery ? 0 : $zone['fee'];
+                        $name = 'Delivery fee (Zone ' . $postalCode . ')';
+
+                        $data = [
+                            'name' => $name,
+                            'amount' => $amount,
+                            'rate_type' => $rateType,
+                            'percentage_rate' => null,
+                            'key_name' => 'Delivery fee',
+                        ];
+
+                        $this->addFee($data);
                         return;
                     }
                 }
@@ -1868,7 +2348,20 @@ class ShoppingCartService
         foreach ($this->deliveryMethod->weight_categories as $category) {
             foreach ($category['weights'] as $weight) {
                 if($this->isWeightMatch($totalWeight, $weight)) {
-                    $this->addFee('Delivery fee ('.$weight . $weightUnit.')', $this->freeDelivery ? 0 : $category['fee'], 'Delivery fee');
+
+                    $rateType = RateType::FLAT->value;
+                    $name = 'Delivery fee ('.$weight . $weightUnit.')';
+                    $amount = $this->freeDelivery ? 0 : $category['fee'];
+
+                    $data = [
+                        'name' => $name,
+                        'amount' => $amount,
+                        'rate_type' => $rateType,
+                        'percentage_rate' => null,
+                        'key_name' => 'Delivery fee',
+                    ];
+
+                    $this->addFee($data);
                     return;
                 }
             }
@@ -2063,17 +2556,38 @@ class ShoppingCartService
     {
         $name = 'Delivery fee';
         if($info) $name .= ' ('.$info.')';
-        $fallbackFeeType = $this->deliveryMethod->fallback_fee_type;
+        $rateType = $this->deliveryMethod->fallback_fee_type;
 
-        switch ($fallbackFeeType) {
+        switch ($rateType) {
             case DeliveryMethodFeeType::FLAT_FEE->value:
-                $fallbackFee = $this->deliveryMethod->fallback_flat_fee_rate->amount;
-                $this->addFee($name, $this->freeDelivery ? 0 : $fallbackFee, 'Delivery fee');
+                $amount = $this->freeDelivery ? 0 : $this->deliveryMethod->fallback_flat_fee_rate->amount;
+
+                $data = [
+                    'name' => $name,
+                    'amount' => $amount,
+                    'rate_type' => $rateType,
+                    'percentage_rate' => null,
+                    'key_name' => 'Delivery fee',
+                ];
+
+                $this->addFee($data);
                 break;
 
             case DeliveryMethodFeeType::PERCENTAGE_FEE->value:
-                $fallbackFee = $this->subtotalAfterDiscount * ($this->deliveryMethod->fallback_percentage_fee_rate / 100);
-                $this->addFee($name, $this->freeDelivery ? 0 : $fallbackFee, 'Delivery fee');
+
+                $percentageRate = $this->deliveryMethod->fallback_percentage_fee_rate;
+                $amount = $this->freeDelivery ? 0 : $this->subtotalAfterDiscount * ($percentageRate / 100);
+
+                $data = [
+                    'name' => $name,
+                    'amount' => $amount,
+                    'rate_type' => $rateType,
+                    'key_name' => 'Delivery fee',
+                    'percentage_rate' => $percentageRate,
+                ];
+
+                $this->addFee($data);
+
                 break;
         }
     }
@@ -2099,8 +2613,19 @@ class ShoppingCartService
     private function handleFlatFeeTip(): void
     {
         if(!is_null($this->tipFlatRate)) {
-            $tipFee = (float) $this->tipFlatRate;
-            $this->addFee('Tip', $tipFee);
+
+            $name = 'Tip';
+            $amount = (float) $this->tipFlatRate;
+
+            $data = [
+                'name' => $name,
+                'key_name' => null,
+                'amount' => $amount,
+                'percentage_rate' => null,
+                'rate_type' => RateType::FLAT->value
+            ];
+
+            $this->addFee($data);
         }
     }
 
@@ -2112,8 +2637,19 @@ class ShoppingCartService
     private function handlePercentageFeeTip(): void
     {
         if(!is_null($this->tipPercentageRate)) {
-            $tipFee = $this->subtotalAfterDiscount * ($this->tipPercentageRate / 100);
-            if($tipFee) $this->addFee('Tip', $tipFee);
+            $name = 'Tip';
+            $percentageRate = $this->tipPercentageRate;
+            $amount = $this->subtotalAfterDiscount * ($percentageRate / 100);
+
+            $data = [
+                'name' => $name,
+                'key_name' => null,
+                'amount' => $amount,
+                'rate_type' => RateType::FLAT->value,
+                'percentage_rate' => $percentageRate
+            ];
+
+            $this->addFee($data);
         }
     }
 
@@ -2124,10 +2660,17 @@ class ShoppingCartService
      */
     private function calculateGrandTotal(): void
     {
-        if($this->store->tax_method == TaxMethod::EXCLUSIVE->value) {
-            $this->grandTotal = round($this->subtotalAfterDiscount + $this->vat + $this->feeTotal, 2);
-        }else{
-            $this->grandTotal = round($this->subtotalAfterDiscount + $this->feeTotal, 2);
+        if ($this->store->tax_method == TaxMethod::EXCLUSIVE->value) {
+            $this->grandTotal = $this->subtotalAfterDiscount + $this->vat + $this->feeTotal + $this->adjustmentTotal;
+        } else {
+            $this->grandTotal = $this->subtotalAfterDiscount + $this->feeTotal + $this->adjustmentTotal;
+        }
+
+        if ($this->adjustmentTotal < 0) {
+            if ($this->grandTotal + $this->adjustmentTotal < 0) {
+                $this->adjustmentTotal = -$this->grandTotal;
+                $this->grandTotal = 0;
+            }
         }
     }
 

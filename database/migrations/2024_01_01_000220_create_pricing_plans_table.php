@@ -22,7 +22,7 @@ class CreatePricingPlansTable extends Migration
             $table->string('description')->nullable();
             $table->string('billing_type');
             $table->string('currency', 3);
-            $table->decimal('price', 10, 2);
+            $table->decimal('price', 12, 3);
             $table->unsignedTinyInteger('discount_percentage_rate')->default(0);
             $table->boolean('supports_web')->default(false);
             $table->boolean('supports_ussd')->default(false);

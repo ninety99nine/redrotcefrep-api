@@ -48,7 +48,7 @@ enum PaymentMethodType:string {
     case CASH_APP = 'cash app';                         //  Local
     case PAYSTACK = 'paystack';                         //  Automated
     case RAZORPAY = 'razorpay';                         //  Automated
-    case SNAPSCAN = 'Snapscan';                         //  Local
+    case SNAPSCAN = 'snapscan';                         //  Local
     case MCBJUICE = 'mcb juice';                        //  Local
     case PAYPAL_ME = 'paypal me';                       //  Manual
     case PROMPTPAY = 'promptpay';                       //  Local

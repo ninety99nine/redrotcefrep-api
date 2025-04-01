@@ -19,6 +19,7 @@ use App\Enums\RequestFileName;
 use App\Enums\ReturnAccessToken;
 use App\Helpers\RequestAuthUser;
 use App\Models\SubscriptionPlan;
+use App\Services\Money\MoneyService;
 use App\Http\Resources\UserResource;
 use App\Repositories\AuthRepository;
 use App\Repositories\BaseRepository;
@@ -801,7 +802,7 @@ class UserRepository extends BaseRepository
         $amount = $this->subscriptionPlanRepository()->setModel($subscriptionPlan)->calculateSubscriptionPlanAmountAgainstSubscriptionDuration($request);
 
         return [
-            'calculation' => $this->convertToMoneyFormat($amount, 'BWP')
+            'calculation' => MoneyService::convertToMoneyFormat($amount, 'BWP')
         ];
     }
 
@@ -1127,7 +1128,7 @@ class UserRepository extends BaseRepository
         $amount = $subscriptionPlan->price->amount * $smsCredits;
 
         return [
-            'calculation' => $this->convertToMoneyFormat($amount, 'BWP')
+            'calculation' => MoneyService::convertToMoneyFormat($amount, 'BWP')
         ];
     }
 

@@ -232,6 +232,11 @@ class Product extends BaseModel
         return $this->belongsTo(Store::class);
     }
 
+    public function photo()
+    {
+        return $this->morphOne(MediaFile::class, 'mediable')->where('type', RequestFileName::PRODUCT_PHOTO->value);
+    }
+
     public function photos()
     {
         return $this->morphMany(MediaFile::class, 'mediable')->where('type', RequestFileName::PRODUCT_PHOTO->value);

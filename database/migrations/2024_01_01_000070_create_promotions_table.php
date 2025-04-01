@@ -1,7 +1,7 @@
 <?php
 
+use App\Enums\RateType;
 use App\Models\Promotion;
-use App\Enums\DiscountType;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -26,9 +26,9 @@ class CreatePromotionsTable extends Migration
 
             /*  Offer Discount Information */
             $table->boolean('offer_discount')->default(false);
-            $table->enum('discount_type', Promotion::DISCOUNT_TYPES())->default(DiscountType::FIXED);
+            $table->enum('discount_rate_type', Promotion::DISCOUNT_RATE_TYPES())->default(RateType::FLAT);
             $table->decimal('discount_percentage_rate', 5, 2)->default(0);
-            $table->decimal('discount_fixed_rate', 10, 2)->default(0);
+            $table->decimal('discount_flat_rate', 12, 3)->default(0);
 
             /*  Offer Free Delivery Information */
             $table->boolean('offer_free_delivery')->default(false);
@@ -38,7 +38,7 @@ class CreatePromotionsTable extends Migration
             $table->string('code', Promotion::CODE_MAX_CHARACTERS)->nullable();
 
             $table->boolean('activate_using_minimum_grand_total')->default(false);
-            $table->decimal('minimum_grand_total', 10, 2)->default(0);
+            $table->decimal('minimum_grand_total', 12, 3)->default(0);
             $table->char('currency', 3)->default(config('app.DEFAULT_CURRENCY'));
 
             $table->boolean('activate_using_minimum_total_products')->default(false);

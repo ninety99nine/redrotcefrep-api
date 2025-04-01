@@ -21,6 +21,7 @@ use App\Enums\TeamMemberStatus;
 use App\Helpers\PlatformManager;
 use App\Enums\InvitationResponse;
 use Illuminate\Support\Facades\DB;
+use App\Services\Money\MoneyService;
 use App\Http\Resources\UserResources;
 use App\Http\Resources\StoreResources;
 use Illuminate\Database\Eloquent\Builder;
@@ -797,14 +798,14 @@ class StoreRepository extends BaseRepository
                         $lowestSalesHour = $totalSalesByPeriod->keys()->last();
                         $lowestSalesAmount = $totalSalesByPeriod->get($lowestSalesHour, 0);
 
-                        $highestSalesDay = $highestSalesHour ? "{$highestSalesHour} ({$this->convertToMoneyFormat($highestSalesAmount, $store->currency)->amountWithCurrency})" : 'N/A';
+                        $highestSalesDay = $highestSalesHour ? "{$highestSalesHour} ({MoneyService::convertToMoneyFormat($highestSalesAmount, $store->currency)->amountWithCurrency})" : 'N/A';
 
                         $lowestSalesDays = $totalSalesByPeriod->filter(function ($amount) use ($lowestSalesAmount) {
                             return $amount === $lowestSalesAmount;
                         })->keys();
 
                         if ($lowestSalesDays->count() === 1) {
-                            $lowestSalesDay = "{$lowestSalesDays->first()} ({$this->convertToMoneyFormat($lowestSalesAmount, $store->currency)->amountWithCurrency})";
+                            $lowestSalesDay = "{$lowestSalesDays->first()} ({MoneyService::convertToMoneyFormat($lowestSalesAmount, $store->currency)->amountWithCurrency})";
                         } else {
                             $lowestSalesDay = 'N/A';
                         }
@@ -814,14 +815,14 @@ class StoreRepository extends BaseRepository
                         }
                     }
 
-                    $totalSales = $this->convertToMoneyFormat($totalSales, $store->currency)->amountWithCurrency;
+                    $totalSales = MoneyService::convertToMoneyFormat($totalSales, $store->currency)->amountWithCurrency;
 
                     $add(
                         'Sale Insights',
                         'Store performance based on sales',
                         [
                             [($isUssd ? 'Sales' : 'Total sales'), $totalSales.' ('. $totalOrders . ($totalOrders == 1 ? ' order' : ' orders') . ')', 'total_sales', 'The total sales revenue generated from orders placed in the store'],
-                            [($isUssd ? 'Avg sale per order' : 'Average sale per order'), $this->convertToMoneyFormat($avgSalesPerOrder, $store->currency)->amountWithCurrency, 'average_sale_per_order', 'The average sales revenue earned per order based on the total sales divided by the number of orders'],
+                            [($isUssd ? 'Avg sale per order' : 'Average sale per order'), MoneyService::convertToMoneyFormat($avgSalesPerOrder, $store->currency)->amountWithCurrency, 'average_sale_per_order', 'The average sales revenue earned per order based on the total sales divided by the number of orders'],
                             [($isUssd ? "Best $periodName" : "Highest sales $periodName"), $highestSalesDay, 'highest_sale_period', "The $periodName with the highest recorded sales amount"],
                             [($isUssd ? "Worst $periodName" : "Lowest sales $periodName"), $lowestSalesDay, 'lowest_sale_period', "The $periodName with the lowest recorded sales amount"]
                         ]
@@ -868,7 +869,7 @@ class StoreRepository extends BaseRepository
                         'Order Insights',
                         'Store performance based on orders',
                         [
-                            [($isUssd ? 'Orders' : 'Total orders'), "{$totalOrders} ({$this->convertToMoneyFormat($totalSales, $store->currency)->amountWithCurrency})", 'total_orders', 'The total number of orders placed, along with the total sales revenue generated from those orders'],
+                            [($isUssd ? 'Orders' : 'Total orders'), "{$totalOrders} ({MoneyService::convertToMoneyFormat($totalSales, $store->currency)->amountWithCurrency})", 'total_orders', 'The total number of orders placed, along with the total sales revenue generated from those orders'],
                             ['Most orders', $mostOrderDay, 'most_orders', "The $periodName with the highest number of orders placed"],
                             ['Least orders', $leastOrderDay, 'least_orders', "The $periodName with the lowest number of orders placed"],
                         ]
@@ -900,7 +901,7 @@ class StoreRepository extends BaseRepository
                     $topSellingProduct = $productsBySales->first();
                     $topSelling = $topSellingProduct
                         ? "{$topSellingProduct->product_name} ({$topSellingProduct->total_quantity} units, " .
-                          $this->convertToMoneyFormat($topSellingProduct->total_revenue, $store->currency)->amountWithCurrency . ")"
+                          MoneyService::convertToMoneyFormat($topSellingProduct->total_revenue, $store->currency)->amountWithCurrency . ")"
                         : 'N/A';
 
                     // Least-selling product
@@ -914,7 +915,7 @@ class StoreRepository extends BaseRepository
 
                             if ($matchingLeastSellingProducts->count() === 1) {
                                 $leastSelling = "{$leastSellingProduct->product_name} ({$leastSellingProduct->total_quantity} units, " .
-                                    $this->convertToMoneyFormat($leastSellingProduct->total_revenue, $store->currency)->amountWithCurrency . ")";
+                                    MoneyService::convertToMoneyFormat($leastSellingProduct->total_revenue, $store->currency)->amountWithCurrency . ")";
                             } else {
                                 $leastSelling = 'N/A';
                             }
@@ -935,10 +936,10 @@ class StoreRepository extends BaseRepository
                     // Average revenue per product
                     $avgRevenuePerProduct = $totalQuantity > 0 ? $totalProductRevenue / $totalQuantity : 0;
 
-                    $avgRevenuePerProductFormatted = $this->convertToMoneyFormat($avgRevenuePerProduct, $store->currency)->amountWithCurrency;
-                    $totalProductRevenueFormatted = $this->convertToMoneyFormat($totalProductRevenue, $store->currency)->amountWithCurrency;
-                    $totalCancelledRevenueFormatted = $this->convertToMoneyFormat($totalCancelledRevenue, $store->currency)->amountWithCurrency;
-                    $totalDiscountFormatted = $this->convertToMoneyFormat($totalDiscount, $store->currency)->amountWithCurrency;
+                    $avgRevenuePerProductFormatted = MoneyService::convertToMoneyFormat($avgRevenuePerProduct, $store->currency)->amountWithCurrency;
+                    $totalProductRevenueFormatted = MoneyService::convertToMoneyFormat($totalProductRevenue, $store->currency)->amountWithCurrency;
+                    $totalCancelledRevenueFormatted = MoneyService::convertToMoneyFormat($totalCancelledRevenue, $store->currency)->amountWithCurrency;
+                    $totalDiscountFormatted = MoneyService::convertToMoneyFormat($totalDiscount, $store->currency)->amountWithCurrency;
 
                     $add(
                         'Product Insights',
@@ -981,7 +982,7 @@ class StoreRepository extends BaseRepository
                     // Revenue per Customer
                     $totalRevenue = $customersData->sum('total_spend');
                     $revenuePerCustomer = $totalCustomers ? $totalRevenue / $totalCustomers : 0;
-                    $revenuePerCustomer = $this->convertToMoneyFormat($revenuePerCustomer, $store->currency)->amountWithCurrency;
+                    $revenuePerCustomer = MoneyService::convertToMoneyFormat($revenuePerCustomer, $store->currency)->amountWithCurrency;
 
                     // Determine previous date range based on the period
                     [$previousDateRange1, $previousDateRange2] = match ($period) {

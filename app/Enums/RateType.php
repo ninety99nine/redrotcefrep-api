@@ -2,7 +2,7 @@
 
 namespace App\Enums;
 
-enum DiscountType:string {
+enum RateType:string {
     case PERCENTAGE = 'percentage';
-    case FIXED = 'fixed';
+    case FLAT = 'flat';
 }
