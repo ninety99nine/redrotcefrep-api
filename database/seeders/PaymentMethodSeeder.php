@@ -338,6 +338,13 @@ class PaymentMethodSeeder extends Seeder
                         ]
                     ],
                     [
+                        'optional' => true,
+                        'type' => 'currency',
+                        'attribute' => 'currency',
+                        'label' =>'Preferred Currency',
+                        'description' => 'Choose the currency you want customers to use when paying through this method. Currency conversion will apply if different from your store’s currency',
+                    ],
+                    [
                         'type' => 'content',
                         'content' => [
                             [
@@ -356,7 +363,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Lynk',
                 'type' => PaymentMethodType::LYNK,
                 'automated_verification' => false,
-                'currencies' => [],
+                'currencies' => null,
                 'countries' => ['JM'],
                 'allowed_countries' => ['JM'],
                 'config_schema' => [
@@ -528,7 +535,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Kaspi',
                 'type' => PaymentMethodType::KASPI,
                 'automated_verification' => false,
-                'currencies' => [],
+                'currencies' => null,
                 'countries' => ['KZ'],
                 'allowed_countries' => ['KZ'],
                 'config_schema' => [
@@ -595,6 +602,13 @@ class PaymentMethodSeeder extends Seeder
                             'required' => [true, 'The Till Number is required'],
                             'regex_pattern' => ['^\d{5,10}$', 'Till Number must be between 5 and 10 digits']
                         ]
+                    ],
+                    [
+                        'optional' => true,
+                        'type' => 'currency',
+                        'attribute' => 'currency',
+                        'label' =>'Preferred Currency',
+                        'description' => 'Choose the currency you want customers to use when paying through this method. Currency conversion will apply if different from your store’s currency',
                     ],
                 ],
             ],
@@ -913,6 +927,13 @@ class PaymentMethodSeeder extends Seeder
                         'validation_rules' => [
                             'required' => [true, 'The Revolut username is required']
                         ]
+                    ],
+                    [
+                        'optional' => true,
+                        'type' => 'currency',
+                        'attribute' => 'currency',
+                        'label' =>'Preferred Currency',
+                        'description' => 'Choose the currency you want customers to use when paying through this method. Currency conversion will apply if different from your store’s currency',
                     ],
                     [
                         'type' => 'content',
@@ -1244,6 +1265,13 @@ class PaymentMethodSeeder extends Seeder
                         'validation_rules' => [
                             'required' => [true, 'The CashApp username is required']
                         ]
+                    ],
+                    [
+                        'optional' => true,
+                        'type' => 'currency',
+                        'attribute' => 'currency',
+                        'label' =>'Preferred Currency',
+                        'description' => 'Choose the currency you want customers to use when paying through this method. Currency conversion will apply if different from your store’s currency',
                     ],
                     [
                         'type' => 'content',
@@ -1893,8 +1921,14 @@ class PaymentMethodSeeder extends Seeder
                         'label' =>'Payment Link',
                         'attribute' => 'paymentLink',
                         'placeholder' => 'https://example.com/pay',
-                        'description' => 'Customize your payment link. Include {amount} or {ref} to replace with order amount and reference - e.g https://example.com/pay?amount={amount}&ref={ref}',
-                        'description_info' => 'Include {amount} or {ref} to replace with order amount and reference - e.g https://example.com/pay?amount={amount}&ref={ref}'
+                        'description' => 'Customize your payment link. Include {firstName}, {lastName}, {mobile}, {email}, {currency}, {amount} or {ref} to replace with order amount and reference - e.g https://example.com/pay?amount={amount}&ref={ref}'
+                    ],
+                    [
+                        'optional' => true,
+                        'type' => 'currency',
+                        'attribute' => 'currency',
+                        'label' =>'Preferred Currency',
+                        'description' => 'Choose the currency you want customers to use when paying through this method. Currency conversion will apply if different from your store’s currency',
                     ],
                     [
                         'type' => 'image',
@@ -1911,7 +1945,7 @@ class PaymentMethodSeeder extends Seeder
                         'type' => 'image',
                         'optional' => true,
                         'attribute' => 'photo',
-                        'label' => 'Image',
+                        'label' => 'Image / QR Code',
                         'description' => 'Upload supporting image',
                         'validation_rules' => [
                             'mime_types' => [['image/jpeg', 'image/jpg', 'image/png', 'image/gif'], 'Only JPEG, JPG, PNG, and GIF formats are allowed'],

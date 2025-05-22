@@ -256,6 +256,11 @@ class Order extends BaseModel
         return $this->belongsTo(User::class, 'assigned_to_user_id');
     }
 
+    public function deliveryMethod()
+    {
+        return $this->belongsTo(deliveryMethod::class);
+    }
+
     public function deliveryAddress()
     {
         return $this->hasOne(DeliveryAddress::class);

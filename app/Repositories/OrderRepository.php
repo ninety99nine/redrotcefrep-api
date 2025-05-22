@@ -340,6 +340,7 @@ class OrderRepository extends BaseRepository
      */
     public function showOrderStatusCounts(array $data): array
     {
+        //dd($data);
         $storeId = $data['store_id'];
         $placedByUserId = $data['placed_by_user_id'];
         $store = Store::find($storeId);
@@ -1893,7 +1894,6 @@ class OrderRepository extends BaseRepository
     {
         $hasEmail = isset($data['email']);
         $hasMobileNumber = isset($data['mobile_number']);
-
 
         if($hasEmail || $hasMobileNumber) {
             $data = array_merge($data, ['currency' => $store->currency]);

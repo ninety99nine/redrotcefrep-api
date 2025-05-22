@@ -865,11 +865,13 @@ class StoreRepository extends BaseRepository
                         }
                     }
 
+                    $totalSales = MoneyService::convertToMoneyFormat($totalSales, $store->currency)->amountWithCurrency;
+
                     $add(
                         'Order Insights',
                         'Store performance based on orders',
                         [
-                            [($isUssd ? 'Orders' : 'Total orders'), "{$totalOrders} ({MoneyService::convertToMoneyFormat($totalSales, $store->currency)->amountWithCurrency})", 'total_orders', 'The total number of orders placed, along with the total sales revenue generated from those orders'],
+                            [($isUssd ? 'Orders' : 'Total orders'), "{$totalOrders} ({$totalSales})", 'total_orders', 'The total number of orders placed, along with the total sales revenue generated from those orders'],
                             ['Most orders', $mostOrderDay, 'most_orders', "The $periodName with the highest number of orders placed"],
                             ['Least orders', $leastOrderDay, 'least_orders', "The $periodName with the lowest number of orders placed"],
                         ]

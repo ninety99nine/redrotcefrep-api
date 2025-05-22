@@ -394,6 +394,8 @@ abstract class BaseRepository
             $value2 = self::convertValueToAppropriateType($parts[1]);
             return [$column, $operator, $value1, $value2];
         }
+
+        throw new Exception("Unable to extract column, operator, and value from input: '$input'");
     }
 
     /**

@@ -33,7 +33,7 @@ class ShowStoreInsightsRequest extends FormRequest
             }
 
             if($this->has('categories')) {
-                $this->merge(['categories' => collect($this->request->all()['categories'])->map(fn($category) => strtolower($category))->toArray()]);
+                $this->merge(['categories' => collect(explode(',', $this->request->all()['categories']))->map(fn($category) => strtolower($category))->toArray()]);
             }
 
         } catch (\Throwable $th) {

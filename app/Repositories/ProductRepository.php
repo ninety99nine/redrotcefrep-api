@@ -235,39 +235,36 @@ class ProductRepository extends BaseRepository
                 $maxStockQuantity = $productWithHighestStockQuantity && $productWithHighestStockQuantity->stock_quantity > 0
                                     ? $productWithHighestStockQuantity->stock_quantity
                                     : 1;
-
                 $productIds = $query->select('products.id')
-                ->selectRaw('
-                    (
+                    ->selectRaw('
                         (
-                            SELECT SUM(order_products.quantity)
-                            FROM order_products
-                            INNER JOIN carts ON carts.id = order_products.cart_id
-                            INNER JOIN orders ON orders.cart_id = carts.id
-                            WHERE order_products.product_id = products.id
-                            AND order_products.is_cancelled = 0
-                            AND orders.status != "cancelled"
-                        ) /
-                        GREATEST(
                             (
-                                SELECT DATEDIFF(MAX(orders.created_at), MIN(orders.created_at))
-                                FROM orders
-                                INNER JOIN carts ON carts.id = orders.cart_id
-                                INNER JOIN order_products ON order_products.cart_id = carts.id
+                                SELECT SUM(order_products.quantity)
+                                FROM order_products
+                                INNER JOIN orders ON orders.id = order_products.order_id
                                 WHERE order_products.product_id = products.id
                                 AND order_products.is_cancelled = 0
-                            ),
-                            1
-                        )
-                    ) *
-                    (CASE
-                        WHEN products.stock_quantity_type = ?
-                            THEN LEAST(products.stock_quantity / ?, 1)
+                                AND orders.status != "cancelled"
+                            ) /
+                            GREATEST(
+                                (
+                                    SELECT DATEDIFF(MAX(orders.created_at), MIN(orders.created_at))
+                                    FROM orders
+                                    INNER JOIN order_products ON order_products.order_id = orders.id
+                                    WHERE order_products.product_id = products.id
+                                    AND order_products.is_cancelled = 0
+                                ),
+                                1
+                            )
+                        ) *
+                        (CASE
+                            WHEN products.stock_quantity_type = ?
+                                THEN LEAST(products.stock_quantity / ?, 1)
                             ELSE 1
-                    END) as sales_rate', [StockQuantityType::LIMITED->value, $maxStockQuantity]
-                )
-                ->orderByDesc('sales_rate')
-                ->pluck('products.id');
+                        END) as sales_rate', [StockQuantityType::LIMITED->value, $maxStockQuantity]
+                    )
+                    ->orderByDesc('sales_rate')
+                    ->pluck('products.id');
 
                     break;
                 case SortProductBy::MOST_STOCK->value;

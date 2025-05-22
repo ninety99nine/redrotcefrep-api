@@ -194,7 +194,7 @@ class ShoppingCartService
                     'name' => $this->deliveryMethod->name,
                     'is_available' => $this->deliveryMethodAvailable,
                     'unavailability_reasons' => $this->deliveryMethodUnavailabilityReasons,
-                    'tips' => $this->deliveryMethodTips,
+                    'tips' => $this->deliveryMethodTips
                 ] : null,
                 'weight' => $this->deliveryWeight,
                 'distance' => $this->deliveryDistance,

@@ -50,8 +50,8 @@ class PaymentMethodRepository extends BaseRepository
                             PaymentMethodType::DPO->value
                         ];
 
-                        $query = PaymentMethod::select('id', 'name', 'type', 'automated_verification', 'config_schema')
-                            ->whereIn('type', ['bank transfer', 'cash on delivery', 'store credit', 'other'])
+                        $query = PaymentMethod::select('id', 'name', 'type', 'currencies', 'automated_verification', 'config_schema')
+                            ->whereIn('type', ['wise', 'm-pesa', 'revolut', 'cash app'])
                             ->orderBy('position')
                             ->latest();
 

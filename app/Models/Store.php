@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Casts\Money;
+use App\Enums\Language;
 use App\Enums\RateType;
 use App\Casts\Currency;
 use App\Enums\TaxMethod;
@@ -97,6 +98,11 @@ class Store extends BaseModel
         return array_map(fn($option) => $option->value, TaxMethod::cases());
     }
 
+    public static function LANGUAGE_OPTIONS(): array
+    {
+        return array_map(fn($option) => $option->value, Language::cases());
+    }
+
     public static function DISTANCE_UNIT_OPTIONS(): array
     {
         return array_map(fn($option) => $option->value, DistanceUnit::cases());
@@ -138,16 +144,24 @@ class Store extends BaseModel
     const CHECKOUT_FEE_NAME_MAX_CHARACTERS = 25;
     const SOCIAL_LINK_NAME_MAX_CHARACTERS = 255;
     CONST NUMBER_OF_EMPLOYEES_MIN_CHARACTERS = 1;
+    const ITEMS_SECTION_HEADING_MAX_CHARACTERS = 25;
+    const TIP_SECTION_HEADING_MAX_CHARACTERS = 25;
+    const DELIVERY_ADDRESS_TITLE_MAX_CHARACTERS = 25;
     const PICKUP_DESTINATION_NAME_MIN_CHARACTERS = 3;
+    const DELIVERY_SCHEDULE_TITLE_MAX_CHARACTERS = 25;
     const PICKUP_DESTINATION_NAME_MAX_CHARACTERS = 25;
+    const CUSTOMER_SECTION_HEADING_MAX_CHARACTERS = 25;
     const DELIVERY_DESTINATION_NAME_MIN_CHARACTERS = 3;
     const DELIVERY_DESTINATION_NAME_MAX_CHARACTERS = 25;
     const PICKUP_DESTINATION_ADDRESS_MIN_CHARACTERS = 3;
     const ORANGE_MONEY_MERCHANT_CODE_MIN_CHARACTERS = 3;
+    const PROMOTIONS_SECTION_HEADING_MAX_CHARACTERS = 25;
     const ORANGE_MONEY_MERCHANT_CODE_MAX_CHARACTERS = 255;
     const PICKUP_DESTINATION_ADDRESS_MAX_CHARACTERS = 100;
     const SUPPORTED_PAYMENT_METHOD_NAME_MIN_CHARACTERS = 3;
     const SUPPORTED_PAYMENT_METHOD_NAME_MAX_CHARACTERS = 20;
+    const COST_BREAKDOWN_SECTION_HEADING_MAX_CHARACTERS = 25;
+    const DELIVERY_METHODS_SECTION_HEADING_MAX_CHARACTERS = 25;
     const NUMBER_OF_EMPLOYEES_MAX_CHARACTERS = 65535;   //  since we use unsignedSmallInteger() table schema
 
     protected $casts = [
@@ -175,6 +189,20 @@ class Store extends BaseModel
         'contact_mobile_number' => E164PhoneNumberCast::class,
         'whatsapp_mobile_number' => E164PhoneNumberCast::class,
         'delivery_destinations' => DeliveryDestinations::class,
+
+        'show_tips' => 'boolean',
+        'show_items' => 'boolean',
+        'show_promotions' => 'boolean',
+        'show_specify_tip' => 'boolean',
+        'show_customer_email' => 'boolean',
+        'show_delivery_methods' => 'boolean',
+        'show_customer_last_name' => 'boolean',
+        'customer_email_required' => 'boolean',
+        'show_customer_first_name' => 'boolean',
+        'customer_last_name_required' => 'boolean',
+        'customer_first_name_required' => 'boolean',
+        'combine_fees_into_one_amount' => 'boolean',
+        'combine_discounts_into_one_amount' => 'boolean',
     ];
 
     protected $tranformableCasts = [
@@ -191,8 +219,21 @@ class Store extends BaseModel
         'delivery_destinations', 'allow_pickup', 'pickup_note', 'pickup_destinations', 'allow_deposit_payments',
         'deposit_percentages', 'allow_installment_payments', 'installment_percentages', 'sms_sender_name',
         'has_automated_payment_methods', 'country', 'language', 'currency', 'distance_unit', 'weight_unit',
-        'tax_percentage_rate', 'tax_method', 'tax_id', 'show_opening_hours', 'opening_hours', 'checkout_fees',
-         'allow_checkout_on_closed_hours', 'tips', 'offer_rewards', 'reward_percentage_rate'
+        'tax_percentage_rate', 'tax_method', 'tax_id', 'show_opening_hours', 'opening_hours',
+        'allow_checkout_on_closed_hours', 'offer_rewards', 'reward_percentage_rate',
+
+        'customer_section_heading',  'show_customer_email', 'show_customer_last_name', 'show_customer_first_name',
+        'customer_email_required', 'customer_last_name_required', 'customer_first_name_required',
+
+        'show_items', 'items_section_heading',
+
+        'show_delivery_methods', 'delivery_methods_section_heading', 'delivery_schedule_title', 'delivery_address_title',
+
+        'show_tips', 'tip_section_heading', 'tips', 'show_specify_tip',
+
+        'show_promotions', 'promotions_section_heading',
+
+        'cost_breakdown_section_heading', 'combine_fees_into_one_amount', 'combine_discounts_into_one_amount', 'checkout_fees'
     ];
 
     /************

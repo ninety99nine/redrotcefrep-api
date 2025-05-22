@@ -126,6 +126,37 @@ class UpdateStoreRequest extends FormRequest
             ],
             'supported_payment_methods.*.active' => ['bail', 'required', 'boolean'],
             'supported_payment_methods.*.instruction' => ['bail', 'nullable', 'string'],
+
+            'customer_section_heading' => ['bail', 'sometimes', 'nullable', 'max:'.Store::CUSTOMER_SECTION_HEADING_MAX_CHARACTERS],
+            'show_customer_email' => ['bail', 'sometimes', 'boolean'],
+            'show_customer_last_name' => ['bail', 'sometimes', 'boolean'],
+            'show_customer_first_name' => ['bail', 'sometimes', 'boolean'],
+            'customer_email_required' => ['bail', 'sometimes', 'boolean'],
+            'customer_last_name_required' => ['bail', 'sometimes', 'boolean'],
+            'customer_first_name_required' => ['bail', 'sometimes', 'boolean'],
+
+            'show_items' => ['bail', 'sometimes', 'boolean'],
+            'items_section_heading' => ['bail', 'sometimes', 'nullable', 'max:'.Store::ITEMS_SECTION_HEADING_MAX_CHARACTERS],
+
+            'show_delivery_methods' => ['bail', 'sometimes', 'boolean'],
+            'delivery_methods_section_heading' => ['bail', 'sometimes', 'nullable', 'max:'.Store::DELIVERY_METHODS_SECTION_HEADING_MAX_CHARACTERS],
+            'delivery_schedule_title' => ['bail', 'sometimes', 'nullable', 'max:'.Store::DELIVERY_SCHEDULE_TITLE_MAX_CHARACTERS],
+            'delivery_address_title' => ['bail', 'sometimes', 'nullable', 'max:'.Store::DELIVERY_ADDRESS_TITLE_MAX_CHARACTERS],
+
+            'show_tips' => ['bail', 'sometimes', 'boolean'],
+            'tip_section_heading' => ['bail', 'sometimes', 'nullable', 'max:'.Store::TIP_SECTION_HEADING_MAX_CHARACTERS],
+            'tips' => ['bail', 'sometimes', 'array'],
+            'tips.*' => ['bail', 'required', 'integer', 'min:1', 'max:100'],
+            'show_specify_tip' => ['bail', 'sometimes', 'boolean'],
+
+            'show_promotions' => ['bail', 'sometimes', 'boolean'],
+            'promotions_section_heading' => ['bail', 'sometimes', 'nullable', 'max:'.Store::PROMOTIONS_SECTION_HEADING_MAX_CHARACTERS],
+
+            'cost_breakdown_section_heading' => ['bail', 'sometimes', 'nullable', 'max:'.Store::COST_BREAKDOWN_SECTION_HEADING_MAX_CHARACTERS],
+            'combine_fees_into_one_amount' => ['bail', 'sometimes', 'boolean'],
+            'combine_discounts_into_one_amount' => ['bail', 'sometimes', 'boolean'],
+            'checkout_fees' => ['bail', 'sometimes', 'array'],
+            'checkout_fees.*' => ['bail', 'required', 'min:0', 'numeric', 'regex:/^\d+(\.\d{1,2})?$/']
         ];
     }
 

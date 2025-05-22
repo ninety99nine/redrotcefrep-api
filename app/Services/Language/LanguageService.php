@@ -14,7 +14,7 @@ class LanguageService
         return [
             [
                 'name' => 'English',
-                'code' => 'EN'
+                'code' => 'en'
             ]
         ];
     }

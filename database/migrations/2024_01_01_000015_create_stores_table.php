@@ -4,6 +4,7 @@ use App\Models\Store;
 use App\Enums\CallToAction;
 use App\Enums\DistanceUnit;
 use App\Enums\TaxMethod;
+use App\Enums\WeightUnit;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
@@ -26,7 +27,7 @@ class CreateStoresTable extends Migration
             $table->string('ussd_mobile_number', 20)->nullable();
             $table->string('contact_mobile_number', 20)->nullable();
             $table->string('whatsapp_mobile_number', 20)->nullable();
-            $table->string('call_to_action', Store::CALL_TO_ACTION_MAX_CHARACTERS)->nullable();
+            $table->string('call_to_action', Store::CALL_TO_ACTION_MAX_CHARACTERS)->default('Order');
             $table->string('description', Store::DESCRIPTION_MAX_CHARACTERS)->nullable();
             $table->string('qr_code_file_path')->nullable();
 
@@ -36,15 +37,15 @@ class CreateStoresTable extends Migration
             $table->json('social_links')->nullable();
             $table->char('country', 2)->default(config('app.DEFAULT_COUNTRY'));
             $table->char('currency', 3)->default(config('app.DEFAULT_CURRENCY'));
-            $table->char('language', 2)->default(config('app.DEFAULT_LANGUAGE'));
+            $table->enum('language', Store::LANGUAGE_OPTIONS())->default(strtolower(config('app.DEFAULT_LANGUAGE')));
             $table->enum('distance_unit', Store::DISTANCE_UNIT_OPTIONS())->default(DistanceUnit::KM->value);
+            $table->enum('weight_unit', Store::WEIGHT_UNIT_OPTIONS())->default(WeightUnit::KILOGRAM->value);
             $table->enum('tax_method', Store::TAX_METHOD_OPTIONS())->default(TaxMethod::INCLUSIVE->value);
             $table->decimal('tax_percentage_rate', 5, 2)->default(0);
             $table->string('tax_id', Store::TAX_ID_MAX_CHARACTERS)->nullable();
             $table->boolean('show_opening_hours')->default(false);
             $table->boolean('allow_checkout_on_closed_hours')->default(true);
             $table->json('opening_hours')->nullable();
-            $table->json('checkout_fees')->nullable();
             $table->boolean('verified')->default(false);
             $table->boolean('online')->default(true);
             $table->string('offline_message', Store::OFFLINE_MESSAGE_MAX_CHARACTERS)->default(Store::DEFAULT_OFFLINE_MESSAGE);
@@ -73,7 +74,34 @@ class CreateStoresTable extends Migration
 
             $table->string('sms_sender_name', Store::SMS_SENDER_NAME_MAX_CHARACTERS)->nullable();
 
+            $table->string('customer_section_heading', Store::CUSTOMER_SECTION_HEADING_MAX_CHARACTERS)->nullable();
+            $table->boolean('show_customer_email')->default(false);
+            $table->boolean('show_customer_last_name')->default(false);
+            $table->boolean('show_customer_first_name')->default(false);
+            $table->boolean('customer_email_required')->default(false);
+            $table->boolean('customer_last_name_required')->default(false);
+            $table->boolean('customer_first_name_required')->default(false);
+
+            $table->boolean('show_items')->default(true);
+            $table->string('items_section_heading', Store::ITEMS_SECTION_HEADING_MAX_CHARACTERS)->nullable();
+
+            $table->boolean('show_delivery_methods')->default(true);
+            $table->string('delivery_methods_section_heading', Store::DELIVERY_METHODS_SECTION_HEADING_MAX_CHARACTERS)->nullable();
+            $table->string('delivery_schedule_title', Store::DELIVERY_SCHEDULE_TITLE_MAX_CHARACTERS)->nullable();
+            $table->string('delivery_address_title', Store::DELIVERY_ADDRESS_TITLE_MAX_CHARACTERS)->nullable();
+
+            $table->boolean('show_tips')->default(true);
+            $table->string('tip_section_heading', Store::TIP_SECTION_HEADING_MAX_CHARACTERS)->nullable();
             $table->json('tips')->nullable();
+            $table->boolean('show_specify_tip')->default(true);
+
+            $table->boolean('show_promotions')->default(true);
+            $table->string('promotions_section_heading', Store::PROMOTIONS_SECTION_HEADING_MAX_CHARACTERS)->nullable();
+
+            $table->string('cost_breakdown_section_heading', Store::COST_BREAKDOWN_SECTION_HEADING_MAX_CHARACTERS)->nullable();
+            $table->boolean('combine_fees_into_one_amount')->default(false);
+            $table->boolean('combine_discounts_into_one_amount')->default(false);
+            $table->json('checkout_fees')->nullable();
 
             /* Add Timestamps */
             $table->timestamps();
