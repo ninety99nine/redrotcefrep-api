@@ -57,10 +57,11 @@ class StoreRepository extends BaseRepository
             $userId = isset($data['user_id']) ? $data['user_id'] : null;
             $association = isset($data['association']) ? Association::tryFrom($data['association']) : null;
 
-            if($association == Association::SUPER_ADMIN) {
-                if(!$this->isAuthourized()) return ['message' => 'You do not have permission to show stores'];
+            if(in_array($association, [Association::SUPER_ADMIN, Association::SHOPPER])) {
+
                 $this->setQuery(Store::query()->latest());
-            }else{
+
+            }else {
 
                 $user = in_array($userId, [request()->current_user->id, null]) ? request()->current_user : User::find($userId);
 

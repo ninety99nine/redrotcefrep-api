@@ -27,6 +27,7 @@ class ShowStoresRequest extends FormRequest
     {
         return [
             'association' => ['bail', 'sometimes', 'nullable', Rule::in(
+                Association::SHOPPER->value,
                 Association::FOLLOWER->value,
                 Association::CUSTOMER->value,
                 Association::SUPER_ADMIN->value,
