@@ -682,7 +682,7 @@ class SmsService
             try {
 
                 // Set the request endpoint
-                $endpoint = config('app.SMS_URL'). str_replace('tel:+','tel%3A%2B', $smsMessage->delivery_status_endpoint);
+                $endpoint = config('app.SMS_URL'). str_replace('tel:+','tel%3A%2B', $smsMessage->metadata['delivery_status_endpoint']);
 
                 // Set the request options
                 $options = [
