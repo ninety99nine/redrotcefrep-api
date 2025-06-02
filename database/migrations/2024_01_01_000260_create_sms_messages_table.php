@@ -22,7 +22,7 @@ class CreateSmsMessagesTable extends Migration
             $table->enum('status', SmsMessage::STATUSES());
             $table->string('content', SmsMessage::CONTENT_MAX_CHARACTERS);
             $table->json('metadata');
-            $table->foreignUuid('store_id')->cascadeOnDelete();
+            $table->foreignUuid('store_id')->nullable()->cascadeOnDelete();
             $table->string('sender_name');
             $table->string('sender_mobile_number', 20);
             $table->string('recipient_mobile_number', 20);

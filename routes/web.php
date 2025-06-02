@@ -20,7 +20,7 @@ use App\Services\Sms\SmsService;
 Route::get('/test-sms', function () {
 
     $smsMessage = SmsService::sendOrangeSms('Hello', '+26772882239');
-    SmsService::updateSmsDeliveryStatus($smsMessage);
+    //SmsService::updateSmsDeliveryStatus($smsMessage);
 
     return 'sms sent';
 });
