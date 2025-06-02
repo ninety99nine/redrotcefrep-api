@@ -382,7 +382,7 @@ class SmsService
      */
     public static function requestSendSms($senderName, $senderMobileNumber, $recipientMobileNumber, $message, $clientCorrelator, $accessToken): array
     {
-        $endpoint = config('app.ORANGE_SMS_ENDPOINT').'/smsmessaging/v1/outbound/tel%3A%2B'.$senderMobileNumber.'/requests';
+        $endpoint = config('app.SMS_URL').'/smsmessaging/v1/outbound/tel%3A%2B'.$senderMobileNumber.'/requests';
 
         $options = [
             'headers' => [
@@ -680,7 +680,7 @@ class SmsService
             try {
 
                 // Set the request endpoint
-                $endpoint = config('app.ORANGE_SMS_ENDPOINT'). str_replace('tel:+','tel%3A%2B', $smsMessage->delivery_status_endpoint);
+                $endpoint = config('app.SMS_URL'). str_replace('tel:+','tel%3A%2B', $smsMessage->delivery_status_endpoint);
 
                 // Set the request options
                 $options = [
