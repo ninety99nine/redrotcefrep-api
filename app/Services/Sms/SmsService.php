@@ -29,7 +29,7 @@ class SmsService
         $clientCredentials = config('app.SMS_CREDENTIALS');
         $senderMobileNumber = config('app.SMS_SENDER_MOBILE_NUMBER');
 
-        if($store && !empty($store->sms_sender_name)) {
+        if($store && !empty($store->sms_sender_name) && !empty($store->mobile_number)) {
 
             $senderName = $store->sms_sender_name;
             $senderMobileNumber = $store->mobile_number->formatE164();
