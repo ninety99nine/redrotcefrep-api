@@ -4,7 +4,7 @@ use App\Jobs\SendSms;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\WebController;
 use App\Http\Controllers\Auth\SocialAuthController;
-use App\Services\SmsService;
+use App\Services\Sms\SmsService;
 
 /*
 |--------------------------------------------------------------------------
