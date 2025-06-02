@@ -629,7 +629,7 @@ class SmsService
                 'metadata' => $metadata,
                 'failure_type' => $failureType,
                 'failure_reason' => $failureReason,
-                'status' => $status ? SmsStatus::DELIVERED_VERIFIED->value : SmsStatus::FAILED_DELIVERY_VERIFICATION->value
+                'status' => $status && $metadata['delivery_status'] == 'DeliveredToTerminal' ? SmsStatus::DELIVERED_VERIFIED->value : SmsStatus::FAILED_DELIVERY_VERIFICATION->value
             ]);
 
             return $smsMessage;
