@@ -25,6 +25,7 @@ class SmsService
     public static function sendOrangeSms($content, $recipientMobileNumber, $store = null): SmsMessage
     {
         $failureType = null;
+        $failureReason = null;
         $clientCorrelator = Str::uuid();
         $senderName = config('app.SMS_SENDER_NAME');
         $clientCredentials = config('app.SMS_CREDENTIALS');
