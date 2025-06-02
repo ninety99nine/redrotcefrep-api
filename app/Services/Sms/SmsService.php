@@ -396,7 +396,7 @@ class SmsService
                 'outboundSMSMessageRequest' => [
                     'address' => ['tel:+'.$recipientMobileNumber],      //  Recepient number to send the SMS message
                     'senderAddress' => 'tel:+'.$senderMobileNumber,     //  Sender number that will be displayed if senderName is not included
-                    'senderName' => $senderName,                        //  Sender name e.g "Company XYZ"
+                    'senderName' => $senderName,                        //  Sender name e.g "Company XYZ" - Maximum 11 characters
                     'outboundSMSTextMessage' => [
                         'message' => $message                           //  Message to be sent
                     ],
