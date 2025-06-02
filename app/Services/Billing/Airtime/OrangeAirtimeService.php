@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Billing\Airtime;
 
 use Throwable;
 use GuzzleHttp\Client;
