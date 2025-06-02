@@ -394,7 +394,7 @@ class SmsService
             'json' => [
                 'outboundSMSMessageRequest' => [
                     'address' => ['tel:+'.$recipientMobileNumber],      //  Recepient number to send the SMS message
-                    'senderAddress' => 'tel:+'.$senderMobileNumber,     //  Sender number that will be displayed if senderName is not included
+                    //'senderAddress' => 'tel:+'.$senderMobileNumber,     //  Sender number that will be displayed if senderName is not included
                     'senderName' => $senderName,                        //  Sender name e.g "Company XYZ"
                     'outboundSMSTextMessage' => [
                         'message' => $message                           //  Message to be sent
