@@ -4,6 +4,7 @@ use App\Jobs\SendSms;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\WebController;
 use App\Http\Controllers\Auth\SocialAuthController;
+use App\Models\Store;
 use App\Services\Sms\SmsService;
 
 /*
@@ -19,7 +20,9 @@ use App\Services\Sms\SmsService;
 
 Route::get('/test-sms', function () {
 
-    $smsMessage = SmsService::sendOrangeSms('Hello', '+26772882239');
+    $store = Store::find('9f0937ef-457d-49e1-9e21-aff7c310e3ae');
+    $smsMessage = SmsService::sendOrangeSms('Hello', '+26772882239', $store);
+
     //SmsService::updateSmsDeliveryStatus($smsMessage);
 
     return 'sms sent';
