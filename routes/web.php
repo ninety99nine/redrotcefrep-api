@@ -21,7 +21,7 @@ use App\Services\Sms\SmsService;
 Route::get('/test-sms', function () {
 
     $store = Store::find('9f0937ef-457d-49e1-9e21-aff7c310e3ae');
-    $smsMessage = SmsService::sendOrangeSms('Hello', '+26772882239', $store);
+    $smsMessage = SmsService::sendOrangeSms('Hello', '+26772882239');
 
     //SmsService::updateSmsDeliveryStatus($smsMessage);
 
