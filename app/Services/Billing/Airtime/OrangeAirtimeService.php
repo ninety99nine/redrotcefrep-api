@@ -1,13 +1,15 @@
 <?php
 
-namespace App\Services\Billing\Airtime;
+namespace App\Services;
 
+use Throwable;
 use GuzzleHttp\Client;
 use App\Enums\CacheName;
 use App\Models\Transaction;
+use Illuminate\Support\Str;
 use App\Helpers\CacheManager;
+use Illuminate\Support\Facades\Log;
 use App\Enums\TransactionFailureType;
-use App\Enums\TransactionFailureReason;
 use App\Enums\TransactionPaymentStatus;
 
 class OrangeAirtimeService
@@ -16,28 +18,37 @@ class OrangeAirtimeService
      *  Bill user on their airtime
      *
      *  @param string $msisdn - The MSISDN (mobile number) of the subscriber to be billed e.g +26772000001
-     *  @param string $mobileNetworkProductId - Uniquely identify the product being purchased
      *  @param Transaction $transaction - The Transaction Model
      *
      *  @return Transaction
      */
-    public static function billUsingAirtime(string $msisdn, string $mobileNetworkProductId, Transaction $transaction): Transaction
+    public static function billUsingAirtime(string $msisdn, Transaction $transaction): Transaction
     {
+        $referenceCode = Str::uuid();
+        $msisdn = ltrim($msisdn, '+');
+        $clientCorrelator = Str::uuid();
+        $pricingPlan = $transaction->owner;
+        $description = $transaction->description;
+        $amount = (float) $transaction->amount->amount;
+
+        $productId = $pricingPlan->type;
+        $purchaseCategoryCode = $pricingPlan->name;
+
+        $clientId = config('app.ORANGE_AIRTIME_BILLING_CLIENT_ID');
+        $billingEnabled = config('app.ORANGE_AIRTIME_BILLING_ENABLED');
+        $onBehalfOf = config('app.ORANGE_AIRTIME_BILLING_ON_BEHALF_OF');
+        $clientSecret = config('app.ORANGE_AIRTIME_BILLING_CLIENT_SECRET');
+
         try {
 
-            //  Remove msisdn "+" (if set)
-            $msisdn = ltrim($msisdn, '+');
+            $ratingType = null;
+            $failureType = null;
+            $failureReason = null;
+            $failedAttempts = null;
+            $fundsAfterDeduction = null;
+            $fundsBeforeDeduction = null;
 
-            //  Set the amount to be billed
-            $amount = (float) $transaction->amount->amount;
-
-            //  Set the description for this payment
-            $description = $transaction->description;
-
-            //  Set default values
-            $failureType = $failureReason = $ratingType = $fundsAfterDeduction = $fundsBeforeDeduction = null;
-
-            if(false) {
+            if($billingEnabled) {
 
                 /**
                  *  ------------------------
@@ -56,7 +67,7 @@ class OrangeAirtimeService
                  *      ]
                  *  ]
                  *
-                 *  On Fail, the response payload is as follows:
+                 *  On Fail, the response payload is as follows =>
                  *
                  *  [
                  *      "status" => false
@@ -66,10 +77,9 @@ class OrangeAirtimeService
                  *      ]
                  *  ]
                  */
-                $response = self::requestNewAirtimeBillingAccessToken();
-                $status = $response['status'];
+                $response = self::requestNewAirtimeBillingAccessToken($clientId, $clientSecret);
 
-                if($status) {
+                if($status = $response['status']) {
 
                     $accessToken = $response['body']['access_token'];
 
@@ -97,7 +107,7 @@ class OrangeAirtimeService
                      *      ]
                      *  ]
                      *
-                     *  On Fail, the response payload is as follows:
+                     *  On Fail, the response payload is as follows =>
                      *
                      *  [
                      *      "status" => false
@@ -109,36 +119,38 @@ class OrangeAirtimeService
                      *  ]
                      */
                     $response = self::requestAirtimeBillingProductInventory($msisdn, $accessToken);
-                    $status = $response['status'];
 
-                    if($status) {
+                    if($status = $response['status']) {
 
                         //  Get the first item of the product inventory array
                         $productInventory = $response['body'][0];
 
                         //  Determine if this is an active account
-                        $isAnActiveAccount = strtolower($productInventory['status']) == 'active';
+                        $isAnActiveAccount = $productInventory['status'] == 'Active';
 
                         //  If this is an active account
                         if( $status = $isAnActiveAccount ) {
 
                             //  Get the account rating type
-                            $ratingType = strtolower($productInventory['ratingType']);
+                            $ratingType = $productInventory['ratingType'];
+
+                            //  Determine if this is a hybrid account
+                            $isHybridAccount = ($ratingType == 'Hybrid');
 
                             //  Determine if this is a prepaid account
-                            $isPrepaidAccount = ($ratingType == 'prepaid');
+                            $isPrepaidAccount = ($ratingType == 'Prepaid');
 
                             //  Determine if this is a postpaid account
-                            $isPostpaidAccount = ($ratingType == 'postpaid');
+                            $isPostpaidAccount = ($ratingType == 'Postpaid');
 
                             //  If this is a postpaid account, we assume to always have enough funds
                             $hasEnoughFunds = $isPostpaidAccount;
 
                             /**
-                             *  If this is a prepaid account, we need to check the
-                             *  account balance to know if we have enough funds.
+                             *  If this is any other account such except a postpaid account, then we need
+                             *  to check the account balance to know if we have enough funds.
                              */
-                            if( $isPrepaidAccount ) {
+                            if( !$isPostpaidAccount ) {
 
                                 /**
                                  *  -----------------------------
@@ -174,7 +186,7 @@ class OrangeAirtimeService
                                  *      ]
                                  *  ]
                                  *
-                                 *  On Fail, the response payload is as follows:
+                                 *  On Fail, the response payload is as follows =>
                                  *
                                  *  [
                                  *      "status" => false
@@ -186,9 +198,8 @@ class OrangeAirtimeService
                                  *  ]
                                  */
                                 $response = self::requestAirtimeBillingUsageConsumption($msisdn, $accessToken);
-                                $status = $response['status'];
 
-                                if($status) {
+                                if($status = $response['status']) {
 
                                     //  Get the bucket with the id of "OCS-0" as it holds information about the "Main Balance"
                                     $accountMainBalanceBucket = collect($response['body']['bucket'])->firstWhere('id', 'OCS-0');
@@ -197,55 +208,37 @@ class OrangeAirtimeService
                                     if( $status = !empty($accountMainBalanceBucket) ) {
 
                                         //  Get the remaining value (The Airtime left that we can bill from the bucket balance)
-                                        $remainingValue = (float) $accountMainBalanceBucket['bucketBalance'][0]['remainingValue'];
+                                        $fundsBeforeDeduction = $accountMainBalanceBucket['bucketBalance'][0]['remainingValue'];
 
                                         //  Determine if we have enough funds
-                                        $status = $hasEnoughFunds = ($remainingValue >= $amount);
-
-                                        //  Set the funds before deduction
-                                        $fundsBeforeDeduction = $remainingValue;
-
-                                        //  Set the funds after deduction
-                                        $fundsAfterDeduction = $hasEnoughFunds ? ($remainingValue - $amount) : $remainingValue;
+                                        $status = $hasEnoughFunds = ($fundsBeforeDeduction >= $amount);
 
                                         //  If we do not have enough funds
                                         if( !$hasEnoughFunds ) {
 
-                                            $failureType = TransactionFailureType::INSUFFICIENT_FUNDS;
+                                            $failureType = TransactionFailureType::INSUFFICIENT_FUNDS->value;
+                                            $failureReason = 'You do not have enough funds to complete this transaction';
 
                                         }
 
                                     }else{
 
-                                        $failureType = TransactionFailureType::USAGE_CONSUMPTION_MAIN_BALANCE_NOT_FOUND;
+                                        $failureType = TransactionFailureType::MISSING_MAIN_BALANCE_INFORMATION->value;
+                                        $failureReason = 'Could not process this transaction because of missing information on your account';
 
                                     }
 
                                 }else{
 
-                                    $failureType = TransactionFailureType::USAGE_CONSUMPTION_RETRIEVAL_FAILED;
-
-                                    if(isset($response['body'])) {
-                                        $body = $response['body'];
-                                        $hasMessage = isset($body['message']) && !empty($body['message']);
-                                        $hasDescription = isset($body['description']) && !empty($body['description']);
-
-                                        if($hasMessage && $hasDescription) {
-                                            $failureReason = trim($body['message']) .": ". trim($body['description']);
-                                        }else if($hasDescription) {
-                                            $failureReason = trim($body['description']);
-                                        }else if($hasMessage) {
-                                            $failureReason = trim($body['message']);
-                                        }else{
-                                            $failureReason = json_encode($body);
-                                        }
-                                    }
+                                    $failureType = TransactionFailureType::USAGE_CONSUMPTION_RETRIEVAL_FAILED->value;
+                                    $failureReason = 'Could not process this transaction, please try again';
+                                    $failedAttempts = json_encode($response['body']['failed_attempts']);
 
                                 }
 
                             }
 
-                            if($status) {
+                            if( $status ) {
 
                                 /**
                                  *  --------------------------
@@ -284,7 +277,7 @@ class OrangeAirtimeService
                                  *      ]
                                  *  ]
                                  *
-                                 *  On Fail, the response payload is as follows:
+                                 *  On Fail, the response payload is as follows =>
                                  *
                                  *  Policy error example:
                                  *
@@ -319,7 +312,7 @@ class OrangeAirtimeService
                                  *      ]
                                  *  ]
                                  */
-                                $response = self::requestAirtimeBillingDeductFee($transaction, $msisdn, $amount, $mobileNetworkProductId, $description, $accessToken);
+                                $response = self::requestAirtimeBillingDeductFee($msisdn, $amount, $onBehalfOf, $productId, $purchaseCategoryCode, $description, $accessToken, $clientCorrelator, $referenceCode);
 
                                 if($status = $response['status']) {
 
@@ -327,681 +320,810 @@ class OrangeAirtimeService
 
                                 }else{
 
-                                    $failureType = TransactionFailureType::PRODUCT_INVENTORY_RETRIEVAL_FAILED;
-
-                                    if(isset($response['body']['requestError'])) {
-                                        if(isset($response['body']['requestError']['policyException'])) $failureReason = $response['body']['requestError']['policyException']['text'];
-                                        if(isset($response['body']['requestError']['serviceException'])) $failureReason = $response['body']['requestError']['serviceException']['text'];
-                                    }
-
-                                    if(!isset($failureReason) && isset($response['body']['message'])) {
-                                        $failureReason = $response['body']['message'];
-                                    }
-
-                                    if(!isset($failureReason)){
-                                        $failureReason = json_encode($response['body']);
-                                    }
-
+                                    $failureType = TransactionFailureType::DEDUCT_FEE_FAILED->value;
+                                    $failureReason = 'Could not process this transaction, please try again';
+                                    $failedAttempts = json_encode($response['body']['failed_attempts']);
                                 }
 
                             }
 
                         }else{
-
-                            $failureType = TransactionFailureType::INACTIVE_ACCOUNT;
-
+                            $failureType = TransactionFailureType::INACTIVE_ACCOUNT->value;
+                            $failureReason = 'This account is currently inactive. Please contact customer support';
                         }
 
                     }else{
-
-                        $failureType = TransactionFailureType::PRODUCT_INVENTORY_RETRIEVAL_FAILED;
-
-                        if(isset($response['body'])) {
-                            $body = $response['body'];
-                            $hasMessage = isset($body['message']) && !empty($body['message']);
-                            $hasDescription = isset($body['description']) && !empty($body['description']);
-
-                            if($hasMessage && $hasDescription) {
-                                $failureReason = trim($body['message']) .": ". trim($body['description']);
-                            }else if($hasDescription) {
-                                $failureReason = trim($body['description']);
-                            }else if($hasMessage) {
-                                $failureReason = trim($body['message']);
-                            }else{
-                                $failureReason = json_encode($body);
-                            }
-                        }
-
+                        $failureType = TransactionFailureType::PRODUCT_INVENTORY_RETRIEVAL_FAILED->value;
+                        $failureReason = 'Could not process this transaction, please try again';
+                        $failedAttempts = json_encode($response['body']['failed_attempts']);
                     }
 
                 }else{
-
-                    $failureType = TransactionFailureType::TOKEN_GENERATION_FAILED;
-
-                    if(isset($response['body'])) {
-                        $body = $response['body'];
-                        $hasError = isset($body['error']) && !empty($body['error']);
-                        $hasErrorDescription = isset($body['error_description']) && !empty($body['error_description']);
-
-                        if($hasError && $hasErrorDescription) {
-                            $failureReason = trim($body['error']) .": ". trim($body['error_description']);
-                        }else if($hasErrorDescription) {
-                            $failureReason = trim($body['error_description']);
-                        }else if($hasError) {
-                            $failureReason = trim($body['error']);
-                        }else{
-                            $failureReason = json_encode($body);
-                        }
-                    }
-
+                    $failureType = TransactionFailureType::TOKEN_GENERATION_FAILED->value;
+                    $failureReason = 'Could not process this transaction, please try again';
+                    $failedAttempts = json_encode($response['body']['failed_attempts']);
                 }
 
             }else{
+
                 $status = true;
-                $ratingType = 'prepaid';
+                $failureType = null;
+                $failureReason = null;
+                $ratingType = 'Prepaid';
                 $fundsBeforeDeduction = 100;
-                $fundsAfterDeduction = 100 - $amount;
+
             }
 
-            //  Update transaction
+            if($status) {
+                $fundsAfterDeduction = $fundsBeforeDeduction - $amount;
+            }
+
+            $metadata = [
+                'rating_type' => $ratingType,
+                'reference_code' => $referenceCode,
+                'client_correlator' => $clientCorrelator,
+                'funds_after_deduction' => $fundsAfterDeduction,
+                'funds_before_deduction' => $fundsBeforeDeduction
+            ];
+
+            if(!empty($failedAttempts)) {
+                $metadata['failed_attempts'] = $failedAttempts;
+            }
+
+            //  Update billing transaction
             $transaction->update([
+                'metadata' => $metadata,
                 'failure_type' => $failureType,
                 'failure_reason' => $failureReason,
-                'payment_status' => $status ? TransactionPaymentStatus::PAID : TransactionPaymentStatus::FAILED_PAYMENT,
-                'metadata' => [
-                    'airtime_billing_rating_type' => $ratingType,
-                    'airtime_billing_funds_after_deduction' => $fundsAfterDeduction,
-                    'airtime_billing_funds_before_deduction' => $fundsBeforeDeduction
-                ],
+                'payment_status' => $status ? TransactionPaymentStatus::PAID->value : TransactionPaymentStatus::FAILED_PAYMENT->value
             ]);
 
-            //  Return a fresh instance of the transaction
-            return $transaction->refresh();
+            //  Return the transaction
+            return $transaction;
 
-        } catch (\Throwable $th) {
+        } catch (Throwable $e) {
 
-            $failureType = TransactionFailureType::INTERNAL_FAILURE;
+            $failureType = TransactionFailureType::INTERNAL_FAILURE->value;
+            $failureReason = 'Could not process this transaction, please try again';
+
+            $metadata = [
+                'failed_attempts' => [
+                    [
+                        'attempts' => 1,
+                        'error_code' => $e->getCode() ?: null,
+                        'error_description' => $e->getMessage()
+                    ]
+                ]
+            ];
 
             $transaction->update([
+                'metadata' => $metadata,
                 'failure_type' => $failureType,
-                'failure_reason' => $th->getMessage(),
-                'payment_status' => TransactionPaymentStatus::FAILED_PAYMENT
+                'failure_reason' => $failureReason,
+                'payment_status' => TransactionPaymentStatus::FAILED_PAYMENT->value
             ]);
 
-            //  Return a fresh instance of the transaction
-            return $transaction->refresh();
+            //  Return the transaction
+            return $transaction;
 
         }
 
     }
 
     /**
-     *  Requests a new airtime billing access token
+     * Requests a new airtime billing access token.
      *
-     *  @return array
+     * @param string $clientId - The billing account client ID provided by the Mobile Network Operator.
+     * @param string $clientSecret - The billing account client secret provided by the Mobile Network Operator.
+     *
+     * @return array - Contains the response status and body.
+     *
+     * On Success, the response payload is as follows:
+     *
+     * {
+     *     "access_token": "c0352550-14c4-3a74-b82e-31bd8d09a556",
+     *     "scope": "am_application_scope default",
+     *     "token_type": "Bearer",
+     *     "expires_in": 3600
+     * }
+     *
+     * On Failure, the response payload is as follows:
+     *
+     * {
+     *     "error_description": "Oauth application is not in active state.",
+     *     "error": "invalid_client"
+     * }
      */
-    public static function requestNewAirtimeBillingAccessToken(): array
+    public static function requestNewAirtimeBillingAccessToken($clientId, $clientSecret): array
     {
-        $clientId = config('app.ORANGE_AIRTIME_BILLING_CLIENT_ID');
-        $clientSecret = config('app.ORANGE_AIRTIME_BILLING_CLIENT_SECRET');
+        $cacheManager = new CacheManager(CacheName::AIRTIME_BILLING_ACCESS_TOKEN_RESPONSE);
 
-        $cacheManager = (new CacheManager(CacheName::AIRTIME_BILLING_ACCESS_TOKEN_RESPONSE));
+        // Check cached token
+        if ($cacheManager->has()) {
+            $cache = $cacheManager->get();
+            if (isset($cache['expires_at']) && now()->lt($cache['expires_at'])) {
+                return $cache['data'];
+            }
+        }
 
-        if( $cacheManager->has() ) {
+        $retries = 0;
+        $maxRetries = 2;
+        $failedAttempts = [];
 
-            return $cacheManager->get();
+        while ($retries <= $maxRetries) {
 
-        }else{
+            $attempts = $retries + 1;
 
             try {
 
-                //  Set the request endpoint
-                $endpoint = config('app.ORANGE_AIRTIME_BILLING_URL').'/token';
+                // Set the request endpoint
+                $endpoint = config('app.ORANGE_AIRTIME_BILLING_URL') . '/token';
 
-                //  Set the request options
+                // Set the request options
                 $options = [
                     'headers' => [
                         'Content-type' => 'application/x-www-form-urlencoded',
-                        'Accept' => 'application/json'
+                        'Accept' => 'application/json',
                     ],
                     'form_params' => [
                         "client_id" => trim($clientId),
                         "grant_type" => "client_credentials",
                         "client_secret" => trim($clientSecret),
                     ],
-                    'verify' => false,  // Disable SSL certificate verification
+                    'verify' => false,
                 ];
 
-                //  Create a new Http Guzzle Client
+                // Create a new HTTP Guzzle Client
                 $httpClient = new Client();
 
-                //  Perform and return the Http request
+                // Perform the HTTP request
                 $response = $httpClient->request('POST', $endpoint, $options);
+
+                // Parse the response body
+                $bodyAsJson = $response->getBody()->getContents();
+                $bodyAsArray = json_decode($bodyAsJson, true);
+
+                // Get the response status code
+                $statusCode = $response->getStatusCode();
+
+                // Prepare the response data
+                $data = [
+                    'status' => ($statusCode == 200),
+                    'attempts' => $attempts,
+                    'body' => $bodyAsArray
+                ];
+
+                // Handle successful response
+                if ($statusCode === 200) {
+
+                    // Calculate expiry timestamp
+                    $expiresAt = now()->addSeconds($bodyAsArray['expires_in'])->subSeconds(120);
+
+                    // Cache the token
+                    $cacheManager->put([
+                        'data' => $data,
+                        'expires_at' => $expiresAt,
+                    ], $expiresAt);
+
+                    if($retries > 0) $data['attempts'] = $attempts;
+
+                    return $data;
+
+                }else{
+
+                    Log::warning('Airtime Billing Token Generation API Error', [
+                        'endpoint' => $endpoint,
+                        'attempts' => $attempts,
+                        'status_code' => $statusCode,
+                        'response' => $bodyAsArray ?? $bodyAsJson
+                    ]);
+
+                    $failedAttempts[] = [
+                        'attempts' => $attempts,
+                        'status_code' => $statusCode,
+                        'response' => $bodyAsArray ?? $bodyAsJson
+                    ];
+
+                }
 
             } catch (\GuzzleHttp\Exception\BadResponseException $e) {
 
                 $response = $e->getResponse();
+                $statusCode = $response->getStatusCode();
+                $bodyAsJson = $response->getBody()->getContents();
+                $bodyAsArray = json_decode($bodyAsJson, true);
 
-            } catch (\Throwable $e) {
+                Log::warning('Airtime Billing Token Generation API Error', [
+                    'endpoint' => $endpoint,
+                    'attempts' => $attempts,
+                    'status_code' => $statusCode,
+                    'message' => $e->getMessage(),
+                    'response' => $bodyAsArray ?? $bodyAsJson
+                ]);
 
-                return [
-                    'status' => false,
-                    'body' => [
-                        'error_description' => $e->getMessage()
-                    ]
+                $failedAttempts[] = [
+                    'attempts' => $attempts,
+                    'status_code' => $statusCode,
+                    'error_description' => $e->getMessage(),
+                    'response' => $bodyAsArray ?? $bodyAsJson,
                 ];
 
-            }
+            } catch (Throwable $e) {
 
-            /**
-             *  Get the response body as a String.
-             *
-             *  On Success, the response payload is as follows:
-             *
-             *  {
-             *      "access_token":"c0352550-14c4-3a74-b82e-31bd8d09a556",
-             *      "scope":"am_application_scope default",
-             *      "token_type":"Bearer",
-             *      "expires_in":3600
-             *  }
-             *
-             *  On Fail, the response payload is as follows:
-             *
-             *  {
-             *      "error_description": "Oauth application is not in active state.",
-             *      "error": "invalid_client"
-             *  }
-             */
-            $jsonString = $response->getBody();
-
-            /**
-             *  Get the response body as an Associative Array:
-             *
-             *  [
-             *      "access_token" => "c0352550-14c4-3a74-b82e-31bd8d09a556",
-             *      "scope" => "am_application_scope default",
-             *      "token_type" => "Bearer",
-             *      "expires_in" => 3600
-             *  ]
-             */
-            $bodyAsArray = json_decode($jsonString, true);
-
-            //  Get the response status code e.g "200"
-            $statusCode = $response->getStatusCode();
-
-            //  Return the status and the body
-            $data = [
-                'status' => ($statusCode == 200),
-                'body' => $bodyAsArray
-            ];
-
-            if($data['status']) {
-
-                /**
-                 *  Cache the successful response data for 58 minutes. The token itself is valid for 1 hour (3600 seconds),
-                 *  however we must take into consideration any latecy in the network that may delay the response.
-                 *  Therefore we are accomodating 2 minutes (120 seconds) for latency costs. This then means we
-                 *  can only cache this successful response data for 58 minutes.
-                 *
-                 *  Return the status and the body (cached)
-                 */
-                $cacheManager->put($data, now()->addMinutes(58));
-
-            }
-
-            //  Return the status and the body (uncached)
-            return $data;
-
-        }
-    }
-
-    /**
-     *  Request the airtime billing product inventory data.
-     *  This helps us learn the account details, for instance, whether the account
-     *  is Active and whether the account is Prepaid or Postpaid.
-     *
-     *  @param string $msisdn - The MSISDN (mobile number) of the subscriber to be billed e.g 26772000001
-     *  @param string $accessToken - The access token
-     *
-     *  @return array
-     */
-    public static function requestAirtimeBillingProductInventory($msisdn, $accessToken): array
-    {
-        try {
-
-            //  Set the request endpoint
-            $endpoint = config('app.ORANGE_AIRTIME_BILLING_URL').'/customer/productInventory/v1/product?publicKey='.$msisdn;
-
-            //  Set the request options
-            $options = [
-                'headers' => [
-                    'Authorization' => 'Bearer '.$accessToken,
-                    'Content-type' => 'application/json',
-                    'Accept' => 'application/json',
-                ],
-                'verify' => false,  // Disable SSL certificate verification
-            ];
-
-            //  Create a new Http Guzzle Client
-            $httpClient = new Client();
-
-            //  Perform and return the Http request
-            $response = $httpClient->request('GET', $endpoint, $options);
-
-        } catch (\GuzzleHttp\Exception\BadResponseException $e) {
-
-            $response = $e->getResponse();
-
-        } catch (\Throwable $e) {
-
-            return [
-                'status' => false,
-                'body' => [
+                Log::error('Airtime Billing Token Generation API Fatal Error', [
+                    'attempt' => $attempts,
+                    'code' => $e->getCode(),
                     'message' => $e->getMessage()
-                ]
-            ];
+                ]);
 
+                $failedAttempts[] = [
+                    'attempts' => $attempts,
+                    'error_code' => $e->getCode() ?: null,
+                    'error_description' => $e->getMessage(),
+                ];
+
+                break;
+
+            }
+
+            $retries++;
         }
 
-        /**
-         *  Get the response body as a String.
-         *
-         *  On Success, the response payload is as follows:
-         *
-         *  [
-         *      {
-         *          "id": "8037c89b-f204-428e-9336-d3a4bca1b3fe",
-         *          "ratingType": "Postpaid",
-         *          "status": "Active",
-         *          "isBundle": true,
-         *          "startDate": "2020-09-17T00:00:00+0000",
-         *          "productOffering": {
-         *              "id": "Orange_Postpaid",
-         *              "name": "MySim"
-         *          }
-         *      }
-         *  ]
-         *
-         *  On Fail, the response payload is as follows:
-         *
-         *  {
-         *      "code": 4001,
-         *      "message": "Missing parameter",
-         *      "description": "Parameter publicKey is missing, null or empty"
-         *  }
-         */
-        $jsonString = $response->getBody();
-
-        /**
-         *  Get the response body as an Associative Array:
-         *
-         *  [
-         *      [
-         *          "id" => "8037c89b-f204-428e-9336-d3a4bca1b3fe",
-         *          "ratingType" => "Postpaid",
-         *          "status" => "Active",
-         *          "isBundle": true,
-         *          "startDate" => "2020-09-17T00:00:00+0000",
-         *          "productOffering": [
-         *              "id" => "Orange_Postpaid",
-         *              "name" => "MySim"
-         *          ]
-         *      ]
-         *  ]
-         */
-        $bodyAsArray = json_decode($jsonString, true);
-
-        //  Get the response status code e.g "200"
-        $statusCode = $response->getStatusCode();
-
-        //  Return the status and the body
         return [
-            'status' => ($statusCode == 200),
-            'body' => $bodyAsArray
+            'status' => false,
+            'body' => [
+                'failed_attempts' => $failedAttempts
+            ],
         ];
     }
 
     /**
-     *  Request the airtime billing usage consumption data.
-     *  This helps us learn how much service consumption is available e.g
-     *  The available airtime balance, sms and mobile data left that can be consumed.
+     * Request the airtime billing product inventory data.
+     * Retrieves account details, such as whether the account is active and whether it is Prepaid or Postpaid.
      *
-     *  @param string $msisdn - The MSISDN (mobile number) of the subscriber to be billed e.g 26772000001
-     *  @param string $accessToken - The access token
+     * @param string $msisdn The MSISDN (mobile number) of the subscriber.
+     * @param string $accessToken The access token for authentication.
      *
-     *  @return array
+     * @return array Response containing the status and the body.
+     *
+     * On Success, the response payload is as follows:
+     * [
+     *     {
+     *         "id": "8037c89b-f204-428e-9336-d3a4bca1b3fe",
+     *         "ratingType": "Postpaid",
+     *         "status": "Active",
+     *         "isBundle": true,
+     *         "startDate": "2020-09-17T00:00:00+0000",
+     *         "productOffering": {
+     *             "id": "Orange_Postpaid",
+     *             "name": "MySim"
+     *         }
+     *     }
+     * ]
+     *
+     * On Failure, the response payload is as follows:
+     * {
+     *     "code": 4001,
+     *     "message": "Missing parameter",
+     *     "description": "Parameter publicKey is missing, null or empty"
+     * }
      */
-    public static function requestAirtimeBillingUsageConsumption($msisdn, $accessToken): array
+    public static function requestAirtimeBillingProductInventory(string $msisdn, string $accessToken): array
     {
-        try {
+        $endpoint = config('app.ORANGE_AIRTIME_BILLING_URL') . "/customer/productInventory/v1/product?publicKey=$msisdn";
 
-            //  Set the request endpoint
-            $endpoint = config('app.ORANGE_AIRTIME_BILLING_URL').'/customer/usageConsumption/v1/usageConsumptionReport?publicKey='.$msisdn;
+        $options = [
+            'headers' => [
+                'Authorization' => "Bearer $accessToken",
+                'Content-Type' => 'application/json',
+                'Accept' => 'application/json'
+            ],
+            'verify' => false, // Disable SSL verification (useful for testing environments)
+        ];
 
-            //  Set the request options
-            $options = [
-                'headers' => [
-                    'Authorization' => 'Bearer '.$accessToken,
-                    'Content-type' => 'application/json',
-                    'Accept' => 'application/json',
-                ],
-                'verify' => false,  // Disable SSL certificate verification
-            ];
+        $retries = 0;
+        $maxRetries = 2;
+        $failedAttempts = [];
 
-            //  Create a new Http Guzzle Client
-            $httpClient = new Client();
+        while ($retries <= $maxRetries) {
 
-            //  Perform and return the Http request
-            $response = $httpClient->request('GET', $endpoint, $options);
+            $attempts = $retries + 1;
 
-        } catch (\GuzzleHttp\Exception\BadResponseException $e) {
+            try {
 
-            $response = $e->getResponse();
+                // Create a new HTTP Guzzle Client
+                $httpClient = new Client();
 
-        } catch (\Throwable $e) {
+                // Perform the HTTP request
+                $response = $httpClient->request('GET', $endpoint, $options);
 
-            return [
-                'status' => false,
-                'body' => [
+                // Parse the response body
+                $bodyAsJson = $response->getBody()->getContents();
+                $bodyAsArray = json_decode($bodyAsJson, true);
+
+                // Get the response status code
+                $statusCode = $response->getStatusCode();
+
+                // Prepare the response data
+                $data = [
+                    'status' => ($statusCode == 200),
+                    'attempts' => $attempts,
+                    'body' => $bodyAsArray
+                ];
+
+                // Handle successful response
+                if ($statusCode === 200) {
+
+                    return $data;
+
+                }else{
+
+                    Log::warning('Airtime Billing Product Inventory API Error', [
+                        'msisdn' => $msisdn,
+                        'endpoint' => $endpoint,
+                        'attempts' => $attempts,
+                        'status_code' => $statusCode,
+                        'response' => $bodyAsArray ?? $bodyAsJson
+                    ]);
+
+                    $failedAttempts[] = [
+                        'attempts' => $attempts,
+                        'status_code' => $statusCode,
+                        'response' => $bodyAsArray ?? $bodyAsJson
+                    ];
+
+                }
+
+            } catch (\GuzzleHttp\Exception\BadResponseException $e) {
+
+                $response = $e->getResponse();
+                $statusCode = $response->getStatusCode();
+                $bodyAsJson = $response->getBody()->getContents();
+                $bodyAsArray = json_decode($bodyAsJson, true);
+
+                Log::warning('Airtime Billing Product Inventory API Error', [
+                    'msisdn' => $msisdn,
+                    'endpoint' => $endpoint,
+                    'attempts' => $attempts,
+                    'status_code' => $statusCode,
+                    'message' => $e->getMessage(),
+                    'response' => $bodyAsArray ?? $bodyAsJson
+                ]);
+
+                $failedAttempts[] = [
+                    'attempts' => $attempts,
+                    'status_code' => $statusCode,
+                    'error_description' => $e->getMessage(),
+                    'response' => $bodyAsArray ?? $bodyAsJson
+                ];
+
+            } catch (Throwable $e) {
+
+                Log::error('Airtime Billing Product Inventory API Fatal Error', [
+                    'msisdn' => $msisdn,
+                    'attempt' => $attempts,
+                    'code' => $e->getCode(),
                     'message' => $e->getMessage()
-                ]
-            ];
+                ]);
 
+                $failedAttempts[] = [
+                    'attempts' => $attempts,
+                    'error_code' => $e->getCode() ?: null,
+                    'error_description' => $e->getMessage(),
+                ];
+
+                break;
+
+            }
+
+            $retries++;
         }
 
-        /**
-         *  Get the response body as a String.
-         *
-         *  On Success, the response payload is as follows:
-         *
-         *  Return the reponse body, the structure is as follows:
-         *
-         *  {
-         *      "id": "2b778311-ab1b-4f9b-bdb7-e8f3632a6ca9",
-         *      "effectiveDate": "2022-01-21T13:24:33+0000",
-         *      "bucket": [
-         *          {
-         *              "id": "OCS-0",
-         *              "name": "Main Balance",
-         *              "usageType": "accountBalance",
-         *              "bucketBalance": [
-         *                  {
-         *                      "unit": "BWP",
-         *                      "remainingValue": 0,
-         *                      "validFor": {
-         *                           "startDateTime": "2019-04-04T00:00:00+0000",
-         *                           "endDateTime": "2023-01-06T00:00:00+0000"
-         *                       }
-         *                   }
-         *                ]
-         *              },
-         *          {
-         *              "id": "OCS-2",
-         *              "name": "On-Net",
-         *              "usageType": "accountBalance",
-         *              "bucketBalance": [
-         *                  {
-         *                      "unit": "BWP",
-         *                      "remainingValue": 0,
-         *                      "validFor": {
-         *                           "startDateTime": "2022-01-02T12:54:34+0000",
-         *                           "endDateTime": "2022-01-20T17:51:06+0000"
-         *                          }
-         *                      }
-         *                  ]
-         *              },
-         *              {
-         *              "id": "OCS-5",
-         *              "name": "National SMS",
-         *              "usageType": "sms",
-         *              "bucketBalance": [
-         *                  {
-         *                      "unit": "SMS",
-         *                      "remainingValue": 11,
-         *                      "validFor": {
-         *                           "startDateTime": "2019-04-07T00:00:00+0000",
-         *                           "endDateTime": "2032-01-04T00:00:00+0000"
-         *                          }
-         *                      }
-         *                  ]
-         *              },
-         *       ]
-         *  }
-         *
-         *  On Fail, the response payload is as follows:
-         *
-         *  {
-         *      "code": 4001,
-         *      "message": "Missing parameter",
-         *      "description": "Parameter publicKey is missing, null or empty"
-         *  }
-         */
-        $jsonString = $response->getBody();
-
-        /**
-         *  Get the response body as an Associative Array:
-         *
-         *  [
-         *      "id" => "2b778311-ab1b-4f9b-bdb7-e8f3632a6ca9",
-         *      "effectiveDate" => "2022-01-21T13:24:33+0000",
-         *      "bucket" => [
-         *          [
-         *              "id" => "OCS-0",
-         *              "name" => "Main Balance",
-         *              "usageType" => "accountBalance",
-         *              "bucketBalance" => [
-         *                  [
-         *                      "unit" => "BWP",
-         *                      "remainingValue" => 0,
-         *                      "validFor" => [
-         *                           "startDateTime" => "2019-04-04T00:00:00+0000",
-         *                           "endDateTime" => "2023-01-06T00:00:00+0000"
-         *                       ]
-         *                   ]
-         *                ]
-         *              ],
-         *          ],
-         *          ...
-         *      ]
-         *  ]
-         */
-        $bodyAsArray = json_decode($jsonString, true);
-
-        //  Get the response status code e.g "200"
-        $statusCode = $response->getStatusCode();
-
-        //  Return the status and the body
         return [
-            'status' => ($statusCode == 200),
-            'body' => $bodyAsArray
+            'status' => false,
+            'body' => [
+                'failed_attempts' => $failedAttempts
+            ],
         ];
     }
 
     /**
-     *  Request to bill the subscriber on the given amount
+     * Request the airtime billing usage consumption data.
+     * Retrieves service consumption details, such as the available airtime balance, SMS, and mobile data left.
      *
-     *  @param Transaction $transaction - The Transaction Model
-     *  @param string $msisdn - The MSISDN (mobile number) of the subscriber to be billed e.g 26772000001
-     *  @param float $amount - The amount to be billed e.g 10.00
-     *  @param string $mobileNetworkProductId - Uniquely identify the product being purchased
-     *  @param string $description - The description of the transaction
-     *  @param string $accessToken - The access token
+     * @param string $msisdn The MSISDN (mobile number) of the subscriber.
+     * @param string $accessToken The access token for authentication.
      *
-     *  @return array
+     * @return array Response containing the status and the body.
+     *
+     * On Success, the response payload is as follows:
+     * {
+     *     "id": "2b778311-ab1b-4f9b-bdb7-e8f3632a6ca9",
+     *     "effectiveDate": "2022-01-21T13:24:33+0000",
+     *     "bucket": [
+     *         {
+     *             "id": "OCS-0",
+     *             "name": "Main Balance",
+     *             "usageType": "accountBalance",
+     *             "bucketBalance": [
+     *                 {
+     *                     "unit": "BWP",
+     *                     "remainingValue": 0,
+     *                     "validFor": {
+     *                         "startDateTime": "2019-04-04T00:00:00+0000",
+     *                         "endDateTime": "2023-01-06T00:00:00+0000"
+     *                     }
+     *                 }
+     *             ]
+     *         },
+     *         {
+     *             "id": "OCS-2",
+     *             "name": "On-Net",
+     *             "usageType": "accountBalance",
+     *             "bucketBalance": [
+     *                 {
+     *                     "unit": "BWP",
+     *                     "remainingValue": 0,
+     *                     "validFor": {
+     *                         "startDateTime": "2022-01-02T12:54:34+0000",
+     *                         "endDateTime": "2022-01-20T17:51:06+0000"
+     *                     }
+     *                 }
+     *             ]
+     *         },
+     *         {
+     *             "id": "OCS-5",
+     *             "name": "National SMS",
+     *             "usageType": "sms",
+     *             "bucketBalance": [
+     *                 {
+     *                     "unit": "SMS",
+     *                     "remainingValue": 11,
+     *                     "validFor": {
+     *                         "startDateTime": "2019-04-07T00:00:00+0000",
+     *                         "endDateTime": "2032-01-04T00:00:00+0000"
+     *                     }
+     *                 }
+     *             ]
+     *         }
+     *     ]
+     * }
+     *
+     * On Failure, the response payload is as follows:
+     * {
+     *     "code": 4001,
+     *     "message": "Missing parameter",
+     *     "description": "Parameter publicKey is missing, null or empty"
+     * }
      */
-    public static function requestAirtimeBillingDeductFee($transaction, $msisdn, $amount, $mobileNetworkProductId, $description, $accessToken): array
+    public static function requestAirtimeBillingUsageConsumption(string $msisdn, string $accessToken): array
     {
-        try {
+        $endpoint = config('app.ORANGE_AIRTIME_BILLING_URL') . "/customer/usageConsumption/v1/usageConsumptionReport?publicKey=$msisdn";
 
-            //  Set the request endpoint
-            $endpoint = config('app.ORANGE_AIRTIME_BILLING_URL').'/payment/v1/tel%3A%2B'.$msisdn.'/transactions/amount';
+        $options = [
+            'headers' => [
+                'Authorization' => "Bearer $accessToken",
+                'Content-Type' => 'application/json',
+                'Accept' => 'application/json',
+            ],
+            'verify' => false, // Disable SSL verification (useful for testing environments)
+        ];
 
-            //  Set the request options
-            $options = [
-                'headers' => [
-                    'Authorization' => 'Bearer '.$accessToken,
-                    'Content-type' => 'application/json',
-                    'Accept' => 'application/json',
-                ],
-                'json' => [
-                    'amountTransaction' => [
-                        'endUserId' => 'tel:+'.$msisdn,
-                        'paymentAmount' => [
-                            'chargingInformation' => [
-                                'amount' => $amount,
-                                'currency' => config('app.CURRENCY'),
-                                'description' => [
-                                    0 => $description,
-                                ],
-                            ],
-                            'chargingMetaData' => [
-                                'productId' => $mobileNetworkProductId,
-                                'purchaseCategoryCode' => config('app.ORANGE_AIRTIME_BILLING_ON_BEHALF_OF')
-                            ],
+        $retries = 0;
+        $maxRetries = 2;
+        $failedAttempts = [];
+
+        while ($retries <= $maxRetries) {
+            $attempts = $retries + 1;
+
+            try {
+                // Create a new HTTP Guzzle Client
+                $httpClient = new Client();
+
+                // Perform the HTTP request
+                $response = $httpClient->request('GET', $endpoint, $options);
+
+                // Parse the response body
+                $bodyAsJson = $response->getBody()->getContents();
+                $bodyAsArray = json_decode($bodyAsJson, true);
+
+                // Get the response status code
+                $statusCode = $response->getStatusCode();
+
+                // Prepare the response data
+                $data = [
+                    'status' => ($statusCode == 200),
+                    'attempts' => $attempts,
+                    'body' => $bodyAsArray
+                ];
+
+                // Handle successful response
+                if ($statusCode === 200) {
+
+                    return $data;
+
+                }else{
+
+                    Log::warning('Airtime Billing Usage Consumption API Error', [
+                        'msisdn' => $msisdn,
+                        'endpoint' => $endpoint,
+                        'attempts' => $attempts,
+                        'status_code' => $statusCode,
+                        'response' => $bodyAsArray ?? $bodyAsJson
+                    ]);
+
+                    $failedAttempts[] = [
+                        'attempts' => $attempts,
+                        'status_code' => $statusCode,
+                        'response' => $bodyAsArray ?? $bodyAsJson
+                    ];
+
+                }
+
+            } catch (\GuzzleHttp\Exception\BadResponseException $e) {
+
+                $response = $e->getResponse();
+                $statusCode = $response->getStatusCode();
+                $bodyAsJson = $response->getBody()->getContents();
+                $bodyAsArray = json_decode($bodyAsJson, true);
+
+                Log::warning('Airtime Billing Usage Consumption API Error', [
+                    'msisdn' => $msisdn,
+                    'endpoint' => $endpoint,
+                    'attempts' => $attempts,
+                    'status_code' => $statusCode,
+                    'message' => $e->getMessage(),
+                    'response' => $bodyAsArray ?? $bodyAsJson
+                ]);
+
+                $failedAttempts[] = [
+                    'attempts' => $attempts,
+                    'status_code' => $statusCode,
+                    'error_description' => $e->getMessage(),
+                    'response' => $bodyAsArray ?? $bodyAsJson
+                ];
+
+            } catch (Throwable $e) {
+
+                Log::error('Airtime Billing Usage Consumption API Fatal Error', [
+                    'msisdn' => $msisdn,
+                    'attempt' => $attempts,
+                    'code' => $e->getCode(),
+                    'message' => $e->getMessage()
+                ]);
+
+                $failedAttempts[] = [
+                    'attempts' => $attempts,
+                    'error_code' => $e->getCode() ?: null,
+                    'error_description' => $e->getMessage(),
+                ];
+
+                break;
+
+            }
+
+            $retries++;
+        }
+
+        return [
+            'status' => false,
+            'body' => [
+                'failed_attempts' => $failedAttempts
+            ],
+        ];
+    }
+
+
+    /**
+     * Request to bill the subscriber on the given amount.
+     *
+     * @param BillingTransaction $billingTransaction The billing transaction Model.
+     * @param string $msisdn The MSISDN (mobile number) of the subscriber.
+     * @param string $amount The amount to be billed (e.g., 10.00).
+     * @param string $onBehalfOf Entity name to allow aggregator or acquiring partners to specify the actual payee.
+     * @param string $productId Combines with the onBehalfOf to uniquely identify the product being purchased.
+     * @param string $purchaseCategoryCode A category defining the content type validated by the AAS integration team.
+     * @param string $description A description of the transaction.
+     * @param string $accessToken The access token for authentication.
+     *
+     * @return array Response containing the status and the body.
+     *
+     * On Success, the response payload is as follows:
+     * {
+     *     "amountTransaction": {
+     *         "endUserId": "tel:+26712345678",
+     *         "paymentAmount": {
+     *             "chargingInformation": {
+     *                 "amount": 10.00,
+     *                 "currency": "BWP",
+     *                 "description": [
+     *                     "Monthly subscription fee"
+     *                 ]
+     *             },
+     *             "chargingMetaData": {
+     *                 "productId": "Daily_subscription",
+     *                 "serviceId": "Streaming_service",
+     *                 "purchaseCategoryCode": "Subscription_fee"
+     *             }
+     *         },
+     *         "clientCorrelator": "unique-technical-id",
+     *         "referenceCode": "Service_provider_payment_reference",
+     *         "transactionOperationStatus": "Charged",
+     *         "serverReferenceCode": "12345abcde",
+     *         "resourceURL": "/payment/v1/tel:+26712345678/transactions/amount/12345abcde"
+     *     }
+     * }
+     *
+     * On Failure, the response payload is as follows:
+     * 403 Status (Policy error example):
+     * {
+     *     "requestError": {
+     *         "policyException": {
+     *             "messageId": "POL2206",
+     *             "text": "User forbidden."
+     *         }
+     *     }
+     * }
+     *
+     * 409 Status (Service error example):
+     * {
+     *     "requestError": {
+     *         "serviceException": {
+     *             "messageId": "SVC0005",
+     *             "text": "Duplicate correlatorId cc1d2d34",
+     *             "variables": ["cc1d2d34"]
+     *         }
+     *     }
+     * }
+     */
+    public static function requestAirtimeBillingDeductFee(
+        string $msisdn,
+        string $amount,
+        string $onBehalfOf,
+        string $productId,
+        string $purchaseCategoryCode,
+        string $description,
+        string $accessToken,
+        string $clientCorrelator,
+        string $referenceCode
+    ): array
+    {
+        $endpoint = config('app.ORANGE_AIRTIME_BILLING_URL').'/payment/v1/tel%3A%2B'.$msisdn.'/transactions/amount';
+
+        $chargingMetaData = array_filter([
+            'productId' => $productId,
+            'onBehalfOf' => $onBehalfOf,
+            'purchaseCategoryCode' => $purchaseCategoryCode,
+        ]);
+
+        $options = [
+            'headers' => [
+                'Authorization' => "Bearer $accessToken",
+                'Content-Type' => 'application/json',
+                'Accept' => 'application/json',
+            ],
+            'json' => [
+                'amountTransaction' => [
+                    'endUserId' => "tel:+$msisdn",
+                    'paymentAmount' => [
+                        'chargingInformation' => [
+                            'amount' => (float) $amount,
+                            'currency' => config('app.CURRENCY', 'BWP'),
+                            'description' => [$description],
                         ],
-                        'transactionOperationStatus' => 'Charged',
-
-                        /**
-                         *  referenceCode:
-                         *  Textual information to uniquely identify the request.
-                         *  Used for business logic, not for operational logic.
-                         */
-                        'referenceCode' => $transaction->id,
-
-                        /**
-                         *  clientCorrelator:
-                         *  A unique (random) identifier set by the application that will be used by AAS to avoid erroneous repeat of requests.
-                         *  If two requests are received with the same clientCorrelator, the second will be rejected.
-                         */
-                        'clientCorrelator' => $transaction->id,
+                        'chargingMetaData' => $chargingMetaData,
                     ],
+                    'clientCorrelator' => $clientCorrelator,
+                    'referenceCode' => $referenceCode,
+                    'transactionOperationStatus' => 'Charged',
                 ],
-                'verify' => false,  // Disable SSL certificate verification
-            ];
+            ],
+            'verify' => false, // Disable SSL verification (useful for testing environments)
+        ];
 
-            //  Create a new Http Guzzle Client
-            $httpClient = new Client();
+        $retries = 0;
+        $maxRetries = 2;
+        $failedAttempts = [];
 
-            //  Perform and return the Http request
-            $response = $httpClient->request('POST', $endpoint, $options);
+        while ($retries <= $maxRetries) {
 
-        } catch (\GuzzleHttp\Exception\BadResponseException $e) {
+            $attempts = $retries + 1;
 
-            $response = $e->getResponse();
+            try {
 
-        } catch (\Throwable $e) {
+                // Create a new HTTP Guzzle Client
+                $httpClient = new Client();
 
-            return [
-                'status' => false,
-                'body' => [
+                // Perform the HTTP request
+                $response = $httpClient->request('POST', $endpoint, $options);
+
+                // Parse the response body
+                $bodyAsJson = $response->getBody()->getContents();
+                $bodyAsArray = json_decode($bodyAsJson, true);
+
+                // Get the response status code
+                $statusCode = $response->getStatusCode();
+
+                // Prepare the response data
+                $data = [
+                    'status' => ($statusCode == 201),
+                    'attempts' => $attempts,
+                    'body' => $bodyAsArray
+                ];
+
+                // Handle successful response
+                if ($statusCode === 201) {
+
+                    return $data;
+
+                }else{
+
+                    Log::warning('Airtime Billing Deduct Fee API Error', [
+                        'msisdn' => $msisdn,
+                        'endpoint' => $endpoint,
+                        'attempts' => $attempts,
+                        'status_code' => $statusCode,
+                        'response' => $bodyAsArray ?? $bodyAsJson
+                    ]);
+
+                    $failedAttempts[] = [
+                        'attempts' => $attempts,
+                        'status_code' => $statusCode,
+                        'response' => $bodyAsArray ?? $bodyAsJson
+                    ];
+
+                }
+
+            } catch (\GuzzleHttp\Exception\BadResponseException $e) {
+
+                $response = $e->getResponse();
+                $statusCode = $response->getStatusCode();
+                $bodyAsJson = $response->getBody()->getContents();
+                $bodyAsArray = json_decode($bodyAsJson, true);
+
+                Log::warning('Airtime Billing Deduct Fee API Error', [
+                    'msisdn' => $msisdn,
+                    'endpoint' => $endpoint,
+                    'attempts' => $attempts,
+                    'status_code' => $statusCode,
+                    'message' => $e->getMessage(),
+                    'response' => $bodyAsArray ?? $bodyAsJson
+                ]);
+
+                $failedAttempts[] = [
+                    'attempts' => $attempts,
+                    'status_code' => $statusCode,
+                    'error_description' => $e->getMessage(),
+                    'response' => $bodyAsArray ?? $bodyAsJson
+                ];
+
+            } catch (Throwable $e) {
+
+                Log::error('Airtime Billing Deduct Fee Fatal API Error', [
+                    'msisdn' => $msisdn,
+                    'attempt' => $attempts,
+                    'code' => $e->getCode(),
                     'message' => $e->getMessage()
-                ]
-            ];
+                ]);
 
+                $failedAttempts[] = [
+                    'attempts' => $attempts,
+                    'error_code' => $e->getCode() ?: null,
+                    'error_description' => $e->getMessage(),
+                ];
+
+                break;
+
+            }
+
+            $retries++;
         }
 
-        /**
-         *  Get the response body as a String.
-         *
-         *  On Success, the response payload is as follows:
-         *
-         *  Return the reponse body, the structure is as follows:
-         *
-         *  {
-         *      "amountTransaction": {
-         *          "endUserId": "tel:+ {MSISDN_WITH_COUNTRYCODE} ",
-         *          "paymentAmount": {
-         *              "chargingInformation": {
-         *                  "amount": 5 ,
-         *                  "currency": " XOF ",
-         *                  "description": [
-         *                      "Short description of the charge"
-         *                  ]
-         *              },
-         *              "totalAmountCharged": 5 ,
-         *              "chargingMetaData": {
-         *                  "productId": " Daily_subscription ",
-         *                  "serviceId": " Football_results ",
-         *                  "purchaseCategoryCode": " Daily_autorenew_pack "
-         *              }
-         *          },
-         *          "clientCorrelator": "unique-technical-id",
-         *          "referenceCode": "Service_provider_payment_reference",
-         *          "transactionOperationStatus": "Charged",
-         *          "serverReferenceCode": "5b9bb0235c2dbe6d16d6b5b2",
-         *          "resourceURL": "/payment/v1/tel%3A%2B {MSISDN_WITH_COUNTRYCODE} /transactions/amount/5b9bb0235c2dbe6d16d6b5b2",
-         *          "link": []
-         *      }
-         *  }
-         *
-         *  On Fail, the response payload is as follows:
-         *
-         *  403 status (Policy error example):
-         *
-         *  {
-         *      "requestError": {
-         *          "policyException": {
-         *              "messageId": " POL2206",
-         *              "text": "User forbidden."
-         *          }
-         *      }
-         *  }
-         *
-         *  409 status (Service error example):
-         *
-         *  {
-         *      "requestError": {
-         *          "serviceException": {
-         *              "messageId": "SVC0005",
-         *              "text": "duplicate correlatorId cc1d2d34",
-         *              "variables": [
-         *                  "cc1d2d34"
-         *              ]
-         *          }
-         *      }
-         *  }
-         */
-        $jsonString = $response->getBody();
-
-        /**
-         *  Get the response body as an Associative Array:
-         *
-         *  [
-         *      "amountTransaction" => [
-         *          "endUserId" => "tel:+ [MSISDN_WITH_COUNTRYCODE]",
-         *          "paymentAmount" => [
-         *              "chargingInformation" => [
-         *                  "amount" => 5 ,
-         *                  "currency" => "XOF",
-         *                  "description" => [
-         *                      "Short description of the charge"
-         *                  ]
-         *              ],
-         *              "totalAmountCharged" => 5 ,
-         *              "chargingMetaData" => [
-         *                  "productId" => "Daily_subscription",
-         *                  "serviceId" => "Football_results",
-         *                  "purchaseCategoryCode" => "Daily_autorenew_pack "
-         *              ]
-         *          ],
-         *          "clientCorrelator" => "unique-technical-id",
-         *          "referenceCode" => "Service_provider_payment_reference",
-         *          "transactionOperationStatus" => "Charged",
-         *          "serverReferenceCode" => "5b9bb0235c2dbe6d16d6b5b2",
-         *          "resourceURL" => "/payment/v1/tel%3A%2B [MSISDN_WITH_COUNTRYCODE] /transactions/amount/5b9bb0235c2dbe6d16d6b5b2",
-         *          "link" => []
-         *      ]
-         *  ]
-         */
-        $bodyAsArray = json_decode($jsonString, true);
-
-        //  Get the response status code e.g "201"
-        $statusCode = $response->getStatusCode();
-
-        //  Return the status and the body
         return [
-            'status' => ($statusCode == 201),
-            'body' => $bodyAsArray
+            'status' => false,
+            'body' => [
+                'failed_attempts' => $failedAttempts
+            ],
         ];
     }
 }

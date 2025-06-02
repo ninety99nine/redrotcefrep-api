@@ -2,12 +2,24 @@
 
 namespace App\Models;
 
+use App\Enums\SmsStatus;
+use App\Enums\SmsFailureType;
 use App\Models\Base\BaseModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class SmsMessage extends BaseModel
 {
     use HasFactory;
+
+    public static function STATUSES(): array
+    {
+        return array_map(fn($status) => $status->value, SmsStatus::cases());
+    }
+
+    public static function FAILURE_TYPES(): array
+    {
+        return array_map(fn($status) => $status->value, SmsFailureType::cases());
+    }
 
     /**
      *  Magic Numbers
@@ -16,14 +28,13 @@ class SmsMessage extends BaseModel
     const CONTENT_MAX_CHARACTERS = 500;
 
     protected $casts = [
-        'sent' => 'boolean',
-        'error' => 'array'
+        'metadata' => 'array'
     ];
 
     protected $tranformableCasts = [];
 
     protected $fillable = [
-        'content', 'recipient_mobile_number', 'sent', 'error', 'store_id'
+        'status', 'content', 'metadata', 'store_id', 'sender_name', 'sender_mobile_number', 'recipient_mobile_number', 'failure_type', 'failure_reason'
     ];
 
     /**

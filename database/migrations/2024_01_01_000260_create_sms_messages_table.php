@@ -19,17 +19,20 @@ class CreateSmsMessagesTable extends Migration
             $table->uuid('id')->primary();
 
             /*  General Information */
+            $table->enum('status', SmsMessage::STATUSES());
             $table->string('content', SmsMessage::CONTENT_MAX_CHARACTERS);
+            $table->json('metadata');
+            $table->foreignUuid('store_id')->cascadeOnDelete();
+            $table->string('sender_name');
+            $table->string('sender_mobile_number', 20);
             $table->string('recipient_mobile_number', 20);
-            $table->boolean('sent')->default(false);
-            $table->json('error')->nullable();
-
-            /*  Store Owenership Information  */
-            $table->foreignUuid('store_id')->nullable();
+            $table->enum('failure_type', SmsMessage::FAILURE_TYPES())->nullable();
+            $table->string('failure_reason')->nullable();
 
             /*  Timestamps  */
             $table->timestamps();
 
+            $table->index('sender_mobile_number');
             $table->index('recipient_mobile_number');
 
         });

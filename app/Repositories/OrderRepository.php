@@ -193,6 +193,12 @@ class OrderRepository extends BaseRepository
         //  $this->sendOrderCreatedNotifications($order);
         $shoppingCartInstance->forgetCache($store);
 
+        //  THIS SHOULD BE HANDLED BY A WORKFLOW INSTEAD
+        if($store->storeQuota->sms_credits) {
+            $smsMessage = $this->craftNewOrderForSellerMessage($order);
+            SendSms::dispatch($smsMessage, $order->customer_mobile_number->formatE164(), $store);
+        }
+
         if(!$this->checkIfHasRelationOnRequest('store')) $order->unsetRelation('store');
         if(!$this->checkIfHasRelationOnRequest('customer')) $order->unsetRelation('customer');
         if(!$this->checkIfHasRelationOnRequest('orderFees')) $order->unsetRelation('orderFees');

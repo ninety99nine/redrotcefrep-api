@@ -24,17 +24,32 @@ trait MessageCrafterTrait
 
         $store = $order->store;
 
+        $message = 'New order: ';
+
         if(empty($store->sms_sender_name)) {
-            return 'New order: '.$store->name_with_emoji.', '.
-                   $order->summary.' from ' . $order->customer_name.
-                   ($order->customer_mobile_number == null ? '' : ' '.$order->customer_mobile_number->formatNational()).
-                   '. Order #'.$order->number;
-        }else{
-            return 'New order: '.$order->summary.
-                   ' from ' . $order->customer_name.
-                   ($order->customer_mobile_number == null ? '' : ' '.$order->customer_mobile_number->formatNational()).
-                   '. Order #'.$order->number;
+            $message .= $store->name . ', ';
         }
+
+        $message .= $order->summary;
+
+        if($order->customer_name && $order->customer_mobile_number) {
+
+            $message .= ' from ' . $order->customer_name .' '. $order->customer_mobile_number->formatNational();
+
+        }else if($order->customer_name || $order->customer_mobile_number) {
+
+            if($order->customer_name) {
+                $message .= ' from ' . $order->customer_name;
+            }else{
+                $message .= ' from ' . $order->customer_mobile_number->formatNational();
+            }
+
+        }
+
+        $message .= '. Order #'.$order->number;
+
+        return $message;
+
     }
 
     /**
@@ -48,7 +63,7 @@ trait MessageCrafterTrait
         $store = $order->store;
 
         if(empty($store->sms_sender_name)) {
-            return $store->name_with_emoji.', you ordered '.$order->summary.'. Reach us on '.$store->mobile_number?->formatNational().'. Order #'.$order->number;
+            return $store->name.', you ordered '.$order->summary.'. Reach us on '.$store->mobile_number?->formatNational().'. Order #'.$order->number;
         }else{
             return 'You ordered '.$order->summary.'. Reach us on '.$store->mobile_number?->formatNational().'. Order #'.$order->number;
         }
@@ -65,7 +80,7 @@ trait MessageCrafterTrait
         $store = $order->store;
 
         if(empty($store->sms_sender_name)) {
-            return $store->name_with_emoji.', your collection code for Order #'.$order->number.' is ' .$order->collection_code;
+            return $store->name.', your collection code for Order #'.$order->number.' is ' .$order->collection_code;
         }else{
             return 'Your collection code for Order #'.$order->number.' is ' .$order->collection_code;
         }
@@ -83,7 +98,7 @@ trait MessageCrafterTrait
         $store = $order->store;
 
         if(empty($store->sms_sender_name)) {
-            return $store->name_with_emoji.', '.'Order #'.$order->number.' updated by '.$updatedByUser->name.' ('.$updatedByUser->mobile_number->formatNational().') Items: '.$order->summary;
+            return $store->name.', '.'Order #'.$order->number.' updated by '.$updatedByUser->name.' ('.$updatedByUser->mobile_number->formatNational().') Items: '.$order->summary;
         }else{
             return 'Order #'.$order->number.' updated by '.$updatedByUser->name.' ('.$updatedByUser->mobile_number->formatNational().') Items: '.$order->summary;
         }
@@ -101,7 +116,7 @@ trait MessageCrafterTrait
         $store = $order->store;
 
         if(empty($store->sms_sender_name)) {
-            return $store->name_with_emoji.', '.'Order #'.$order->number.' is '.$order->statusRawOriginalLowercase().', updated by '.$updatedByUser->name.' ('.$updatedByUser->mobile_number->formatNational().') Items: '.$order->summary;
+            return $store->name.', '.'Order #'.$order->number.' is '.$order->statusRawOriginalLowercase().', updated by '.$updatedByUser->name.' ('.$updatedByUser->mobile_number->formatNational().') Items: '.$order->summary;
         }else{
             return 'Order #'.$order->number.' is '.$order->statusRawOriginalLowercase().', updated by '.$updatedByUser->name.' ('.$updatedByUser->mobile_number->formatNational().') Items: '.$order->summary;
         }
@@ -119,7 +134,7 @@ trait MessageCrafterTrait
         $store = $order->store;
 
         if(empty($store->sms_sender_name)) {
-            return $store->name_with_emoji.', '.'Order #'.$order->number.' has been seen by '.$seenByUser->name.' ('.$seenByUser->mobile_number->formatNational().') Items: '.$order->summary;
+            return $store->name.', '.'Order #'.$order->number.' has been seen by '.$seenByUser->name.' ('.$seenByUser->mobile_number->formatNational().') Items: '.$order->summary;
         }else{
             return 'Order #'.$order->number.' has been seen by '.$seenByUser->name.' ('.$seenByUser->mobile_number->formatNational().') Items: '.$order->summary;
         }
@@ -137,7 +152,7 @@ trait MessageCrafterTrait
         $store = $order->store;
 
         if(empty($store->sms_sender_name)) {
-            return $store->name_with_emoji.', '.'Order #'.$order->number.' completed and collected. Verified by '.$manuallyVerifiedByUser->name.' ('.$manuallyVerifiedByUser->mobile_number->formatNational().') Items: '.$order->summary;
+            return $store->name.', '.'Order #'.$order->number.' completed and collected. Verified by '.$manuallyVerifiedByUser->name.' ('.$manuallyVerifiedByUser->mobile_number->formatNational().') Items: '.$order->summary;
         }else{
             return 'Order #'.$order->number.' completed and collected. Verified by '.$manuallyVerifiedByUser->name.' ('.$manuallyVerifiedByUser->mobile_number->formatNational().') Items: '.$order->summary;
         }
@@ -159,7 +174,7 @@ trait MessageCrafterTrait
         if($paymentMethod->isDpo()) {
 
             if(empty($store->sms_sender_name)) {
-                return $store->name_with_emoji.', Pay for Order #'.$order->number.' using this payment link '.$transaction->metadata['dpo_payment_url'].'. Valid till '.Carbon::parse($transaction->metadata['dpo_payment_url_expires_at'])->format('d M Y H:i').'. Requested by '.$requestedByUser->name.' ('.$requestedByUser->mobile_number->formatNational().') Items: '.$order->summary;
+                return $store->name.', Pay for Order #'.$order->number.' using this payment link '.$transaction->metadata['dpo_payment_url'].'. Valid till '.Carbon::parse($transaction->metadata['dpo_payment_url_expires_at'])->format('d M Y H:i').'. Requested by '.$requestedByUser->name.' ('.$requestedByUser->mobile_number->formatNational().') Items: '.$order->summary;
             }else{
                 return 'Pay for Order #'.$order->number.' using this payment link '.$transaction->metadata['dpo_payment_url'].'. Valid till '.Carbon::parse($transaction->metadata['dpo_payment_url_expires_at'])->format('d M Y H:i').'. Requested by '.$requestedByUser->name.' ('.$requestedByUser->mobile_number->formatNational().') Items: '.$order->summary;
             }
@@ -167,7 +182,7 @@ trait MessageCrafterTrait
         }else if($paymentMethod->isOrangeMoney()) {
 
             if(empty($store->sms_sender_name)) {
-                return $store->name_with_emoji.', You are paying for Order #'.$order->number.' using Orange Money. Requested by '.$requestedByUser->name.' ('.$requestedByUser->mobile_number->formatNational().') Items: '.$order->summary;
+                return $store->name.', You are paying for Order #'.$order->number.' using Orange Money. Requested by '.$requestedByUser->name.' ('.$requestedByUser->mobile_number->formatNational().') Items: '.$order->summary;
             }else{
                 return 'You are paying for Order #'.$order->number.' using Orange Money. Requested by '.$requestedByUser->name.' ('.$requestedByUser->mobile_number->formatNational().') Items: '.$order->summary;
             }
@@ -188,13 +203,13 @@ trait MessageCrafterTrait
 
         if($transaction->paymentMethod->isDpo()) {
             if(empty($store->sms_sender_name)) {
-                return $store->name_with_emoji.', '.$transaction->amount->amountWithCurrency.' paid successfully for Order #'.$order->number.' by '.$transaction->metadata['dpo_payment_response']['onVerifyPaymentResponse']['customerName'].' using '.$transaction->paymentMethod->name.' on '.Carbon::parse($transaction->updated_at)->format('d M Y H:i');
+                return $store->name.', '.$transaction->amount->amountWithCurrency.' paid successfully for Order #'.$order->number.' by '.$transaction->metadata['dpo_payment_response']['onVerifyPaymentResponse']['customerName'].' using '.$transaction->paymentMethod->name.' on '.Carbon::parse($transaction->updated_at)->format('d M Y H:i');
             }else{
                 return $transaction->amount->amountWithCurrency.' paid successfully for Order #'.$order->number.' by '.$transaction->metadata['dpo_payment_response']['onVerifyPaymentResponse']['customerName'].' using '.$transaction->paymentMethod->name.' on '.Carbon::parse($transaction->updated_at)->format('d M Y H:i');
             }
         }else if($transaction->paymentMethod->isOrangeMoney()) {
             if(empty($store->sms_sender_name)) {
-                return $store->name_with_emoji.', '.$transaction->amount->amountWithCurrency.' paid successfully for Order #'.$order->number.' by '.$transaction->customer->name.' using '.$transaction->paymentMethod->name.' on '.Carbon::parse($transaction->updated_at)->format('d M Y H:i');
+                return $store->name.', '.$transaction->amount->amountWithCurrency.' paid successfully for Order #'.$order->number.' by '.$transaction->customer->name.' using '.$transaction->paymentMethod->name.' on '.Carbon::parse($transaction->updated_at)->format('d M Y H:i');
             }else{
                 return $transaction->amount->amountWithCurrency.' paid successfully for Order #'.$order->number.' by '.$transaction->customer->name.' using '.$transaction->paymentMethod->name.' on '.Carbon::parse($transaction->updated_at)->format('d M Y H:i');
             }
@@ -214,7 +229,7 @@ trait MessageCrafterTrait
         $store = $order->store;
 
         if(empty($store->sms_sender_name)) {
-            return $store->name_with_emoji.', '.$transaction->amount->amountWithCurrency.' marked as paid'.($transaction->paymentMethod ? ' using '.$transaction->paymentMethod->name : '').' for Order #'.$order->number.' on '.Carbon::parse($transaction->updated_at)->format('d M Y H:i').'. Payment verified by '.$manuallyVerifiedByUser->name.' ('.$manuallyVerifiedByUser->mobile_number->formatNational().')';
+            return $store->name.', '.$transaction->amount->amountWithCurrency.' marked as paid'.($transaction->paymentMethod ? ' using '.$transaction->paymentMethod->name : '').' for Order #'.$order->number.' on '.Carbon::parse($transaction->updated_at)->format('d M Y H:i').'. Payment verified by '.$manuallyVerifiedByUser->name.' ('.$manuallyVerifiedByUser->mobile_number->formatNational().')';
         }else{
             return $transaction->amount->amountWithCurrency.' marked as paid'.($transaction->paymentMethod ? ' using '.$transaction->paymentMethod->name : '').' for Order #'.$order->number.' on '.Carbon::parse($transaction->updated_at)->format('d M Y H:i').'. Payment verified by '.$manuallyVerifiedByUser->name.' ('.$manuallyVerifiedByUser->mobile_number->formatNational().')';
         }
@@ -229,7 +244,7 @@ trait MessageCrafterTrait
      *  @return string
      */
     public function craftStoreSubscriptionPaidMessage(Store $store, Transaction $transaction, Subscription $subscription) {
-        return $transaction->amount->amountWithCurrency.' paid for '.$store->name_with_emoji.'. Valid till '.Carbon::parse($subscription->end_date)->format('d M Y H:i');
+        return $transaction->amount->amountWithCurrency.' paid for '.$store->name.'. Valid till '.Carbon::parse($subscription->end_date)->format('d M Y H:i');
     }
 
     /**

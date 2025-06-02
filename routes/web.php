@@ -4,6 +4,7 @@ use App\Jobs\SendSms;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\WebController;
 use App\Http\Controllers\Auth\SocialAuthController;
+use App\Services\SmsService;
 
 /*
 |--------------------------------------------------------------------------
@@ -15,6 +16,14 @@ use App\Http\Controllers\Auth\SocialAuthController;
 | contains the "web" middleware group. Now create something great!
 |
 */
+
+Route::get('/test-sms', function () {
+
+    $smsMessage = SmsService::sendOrangeSms('Hello', '+26772882239');
+    SmsService::updateSmsDeliveryStatus($smsMessage);
+
+    return 'sms sent';
+});
 
 Route::get('/test-invoice', function () {
     $store = \App\Models\Store::with(['logo'])->first();

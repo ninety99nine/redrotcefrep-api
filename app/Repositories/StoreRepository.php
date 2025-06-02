@@ -103,6 +103,7 @@ class StoreRepository extends BaseRepository
         $this->getMediaFileRepository()->authourize()->createMediaFile(RequestFileName::STORE_LOGO, $store);
         $this->getMediaFileRepository()->authourize()->createMediaFile(RequestFileName::STORE_COVER_PHOTO, $store);
         Notification::send(request()->current_user, new StoreCreated($store, request()->current_user));
+
         return $this->showCreatedResource($store);
     }
 

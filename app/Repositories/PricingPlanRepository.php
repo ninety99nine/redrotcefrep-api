@@ -253,9 +253,8 @@ class PricingPlanRepository extends BaseRepository
 
             }else if($paymentMethod->isOrangeAirtime()) {
 
-                $mobileNetworkProductId = $pricingPlan->type;
                 $msisdn = $this->getAuthUser()->mobile_number->formatE164();
-                $transaction = OrangeAirtimeService::billUsingAirtime($msisdn, $mobileNetworkProductId, $transaction);
+                $transaction = OrangeAirtimeService::billUsingAirtime($msisdn, $transaction);
 
                 if($transaction->payment_status == TransactionPaymentStatus::FAILED_PAYMENT->value) {
                     return [
