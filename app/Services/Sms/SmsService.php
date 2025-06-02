@@ -34,6 +34,7 @@ class SmsService
         if($store && !empty($store->sms_sender_name)) {
 
             $senderName = $store->sms_sender_name;
+            //  $senderMobileNumber = $store->mobile_number->formatE164();
 
         }
 
@@ -394,7 +395,7 @@ class SmsService
             'json' => [
                 'outboundSMSMessageRequest' => [
                     'address' => ['tel:+'.$recipientMobileNumber],      //  Recepient number to send the SMS message
-                    //'senderAddress' => 'tel:+'.$senderMobileNumber,     //  Sender number that will be displayed if senderName is not included
+                    'senderAddress' => 'tel:+'.$senderMobileNumber,     //  Sender number that will be displayed if senderName is not included
                     'senderName' => $senderName,                        //  Sender name e.g "Company XYZ"
                     'outboundSMSTextMessage' => [
                         'message' => $message                           //  Message to be sent
