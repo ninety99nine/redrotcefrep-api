@@ -92,11 +92,6 @@ class AuthRepository extends BaseRepository
             $result = new UserResource($createdUser);
         }
 
-        SendSms::dispatch(
-            $createdUser->craftAccountCreatedSmsMessageForUser(),
-            $createdUser->mobile_number->formatE164()
-        );
-
         return $result;
     }
 

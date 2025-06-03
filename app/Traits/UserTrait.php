@@ -211,15 +211,6 @@ trait UserTrait
     }
 
     /**
-     *  Craft the new order sms messsage to send to the customer
-     *
-     *  @return string
-     */
-    public function craftAccountCreatedSmsMessageForUser() {
-        return 'Hi '.$this->first_name.', your '.config('app.name').' account was created successfully! Enjoy 😉';
-    }
-
-    /**
      *  Craft the sms alerts payment success sms messsage
      *
      *  @return string
