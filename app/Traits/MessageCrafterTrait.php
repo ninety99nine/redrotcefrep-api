@@ -24,11 +24,7 @@ trait MessageCrafterTrait
 
         $store = $order->store;
 
-        $message = 'New order: ';
-
-        if(empty($store->sms_sender_name)) {
-            $message .= $store->name . ', ';
-        }
+        $message = 'Order #'.$order->number.': ';
 
         $message .= $order->summary;
 
@@ -46,7 +42,9 @@ trait MessageCrafterTrait
 
         }
 
-        $message .= '. Order #'.$order->number;
+        if(empty($store->sms_sender_name)) {
+            $message .= '. ' . $store->name;
+        }
 
         return $message;
 
