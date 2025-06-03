@@ -24,7 +24,7 @@ trait MessageCrafterTrait
 
         $store = $order->store;
 
-        $message = 'Order #'.$order->number.': ';
+        $message = 'Order #'.$order->number.' ';
 
         $message .= $order->summary;
 
