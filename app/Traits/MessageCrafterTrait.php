@@ -254,7 +254,7 @@ trait MessageCrafterTrait
      *  @return string
      */
     public function craftStoreMarketingMessage(Store $store) {
-        return 'Your store is live! Customers can order via '.$store->ussd_shortcode.' or ' . $store->web_link . '. Share this on WhatsApp, Facebook, Instagram & flyers now.';
+        return 'Your store '.$store->name.' is live! Customers can order via '.$store->ussd_shortcode.' or ' . $store->web_link . '. Share on WhatsApp, Facebook & flyers!';
     }
 
     /**

@@ -24,12 +24,6 @@ use App\Services\Billing\Airtime\OrangeAirtimeService;
 
 Route::get('/test-sms', function () {
 
-    $message = 'Welcome! Your order has been confirmed. Track it at example.com/tracking-numbers/123456789/123456789. For help, reply to this SMS or call 0800-456-789. Thank you for shopping with us Today';
-
-    SendSms::dispatch($message, '+26772882239');
-
-    return 'Sent!';
-
     $store = Store::find('9f10fb02-4be6-48ae-ac2e-4df1cc12952c');
     $smsMessage = (new PricingPlanRepository)->craftStoreMarketingMessage($store);
     SendSms::dispatch($smsMessage, '+26772882239');
