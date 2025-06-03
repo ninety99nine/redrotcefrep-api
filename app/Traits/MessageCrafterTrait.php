@@ -242,7 +242,7 @@ trait MessageCrafterTrait
      *  @return string
      */
     public function craftStoreSubscriptionPaidMessage(Store $store, Transaction $transaction, Subscription $subscription) {
-        return $transaction->amount->amountWithCurrency.' paid for '.$store->name.'. Valid till '.Carbon::parse($subscription->end_date)->format('d M Y H:i');
+        return $transaction->amount->amountWithCurrency.' subscription paid for '.$store->name.'. Valid till '.Carbon::parse($subscription->end_date)->format('d M Y H:i'). '. Enjoy ;)';
     }
 
     /**
