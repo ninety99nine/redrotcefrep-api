@@ -11,7 +11,7 @@ class OpenAiService
 
     public function __construct()
     {
-        $this->openai = OpenAI::factory()->withApiKey(env('OPENAI_API_KEY'))->make();
+        $this->openai = OpenAI::factory()->withApiKey(config('app.OPENAI_API_KEY'))->make();
     }
 
     /**
@@ -36,7 +36,7 @@ class OpenAiService
         ];
 
         $response = $this->openai->chat()->create([
-            'model' => env('OPENAI_API_MODEL'),
+            'model' => config('app.OPENAI_API_MODEL'),
             'messages' => [
                 ...$messages,
                 [
