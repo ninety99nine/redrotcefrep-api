@@ -386,6 +386,14 @@ class OrangeAirtimeService
             $failureType = TransactionFailureType::INTERNAL_FAILURE->value;
             $failureReason = 'Could not process this transaction, please try again';
 
+            Log::error('Airtime Billing Fatal Error', [
+                'code' => $e->getCode(),
+                'message' => $e->getMessage(),
+                'msisdn' => $msisdn,
+                'pricing_plan' => $pricingPlan->id,
+                'transaction_id' => $transaction->id,
+            ]);
+
             $metadata = [
                 'failed_attempts' => [
                     [
@@ -511,7 +519,7 @@ class OrangeAirtimeService
 
                 }else{
 
-                    Log::warning('Airtime Billing Token Generation API Error', [
+                    Log::error('Airtime Billing Token Generation API Error', [
                         'endpoint' => $endpoint,
                         'attempts' => $attempts,
                         'status_code' => $statusCode,
@@ -533,7 +541,7 @@ class OrangeAirtimeService
                 $bodyAsJson = $response->getBody()->getContents();
                 $bodyAsArray = json_decode($bodyAsJson, true);
 
-                Log::warning('Airtime Billing Token Generation API Error', [
+                Log::error('Airtime Billing Token Generation API Error', [
                     'endpoint' => $endpoint,
                     'attempts' => $attempts,
                     'status_code' => $statusCode,
@@ -658,7 +666,7 @@ class OrangeAirtimeService
 
                 }else{
 
-                    Log::warning('Airtime Billing Product Inventory API Error', [
+                    Log::error('Airtime Billing Product Inventory API Error (Stage 1)', [
                         'msisdn' => $msisdn,
                         'endpoint' => $endpoint,
                         'attempts' => $attempts,
@@ -681,7 +689,7 @@ class OrangeAirtimeService
                 $bodyAsJson = $response->getBody()->getContents();
                 $bodyAsArray = json_decode($bodyAsJson, true);
 
-                Log::warning('Airtime Billing Product Inventory API Error', [
+                Log::error('Airtime Billing Product Inventory API Error (Stage 2)', [
                     'msisdn' => $msisdn,
                     'endpoint' => $endpoint,
                     'attempts' => $attempts,
@@ -699,7 +707,7 @@ class OrangeAirtimeService
 
             } catch (Throwable $e) {
 
-                Log::error('Airtime Billing Product Inventory API Fatal Error', [
+                Log::error('Airtime Billing Product Inventory API Fatal Error (Stage 3)', [
                     'msisdn' => $msisdn,
                     'attempt' => $attempts,
                     'code' => $e->getCode(),
@@ -844,7 +852,7 @@ class OrangeAirtimeService
 
                 }else{
 
-                    Log::warning('Airtime Billing Usage Consumption API Error', [
+                    Log::error('Airtime Billing Usage Consumption API Error (Stage 1)', [
                         'msisdn' => $msisdn,
                         'endpoint' => $endpoint,
                         'attempts' => $attempts,
@@ -867,7 +875,7 @@ class OrangeAirtimeService
                 $bodyAsJson = $response->getBody()->getContents();
                 $bodyAsArray = json_decode($bodyAsJson, true);
 
-                Log::warning('Airtime Billing Usage Consumption API Error', [
+                Log::error('Airtime Billing Usage Consumption API Error (Stage 2)', [
                     'msisdn' => $msisdn,
                     'endpoint' => $endpoint,
                     'attempts' => $attempts,
@@ -885,7 +893,7 @@ class OrangeAirtimeService
 
             } catch (Throwable $e) {
 
-                Log::error('Airtime Billing Usage Consumption API Fatal Error', [
+                Log::error('Airtime Billing Usage Consumption API Fatal Error (Stage 3)', [
                     'msisdn' => $msisdn,
                     'attempt' => $attempts,
                     'code' => $e->getCode(),
@@ -1058,7 +1066,7 @@ class OrangeAirtimeService
 
                 }else{
 
-                    Log::warning('Airtime Billing Deduct Fee API Error', [
+                    Log::error('Airtime Billing Deduct Fee API Error (Stage 1)', [
                         'msisdn' => $msisdn,
                         'endpoint' => $endpoint,
                         'attempts' => $attempts,
@@ -1081,7 +1089,7 @@ class OrangeAirtimeService
                 $bodyAsJson = $response->getBody()->getContents();
                 $bodyAsArray = json_decode($bodyAsJson, true);
 
-                Log::warning('Airtime Billing Deduct Fee API Error', [
+                Log::error('Airtime Billing Deduct Fee API Error (Stage 2)', [
                     'msisdn' => $msisdn,
                     'endpoint' => $endpoint,
                     'attempts' => $attempts,
@@ -1099,7 +1107,7 @@ class OrangeAirtimeService
 
             } catch (Throwable $e) {
 
-                Log::error('Airtime Billing Deduct Fee Fatal API Error', [
+                Log::error('Airtime Billing Deduct Fee Fatal API Error (Stage 3)', [
                     'msisdn' => $msisdn,
                     'attempt' => $attempts,
                     'code' => $e->getCode(),

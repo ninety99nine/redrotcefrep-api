@@ -1,11 +1,13 @@
 <?php
 
 use App\Jobs\SendSms;
+use App\Models\Store;
+use App\Services\Sms\SmsService;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\WebController;
 use App\Http\Controllers\Auth\SocialAuthController;
-use App\Models\Store;
-use App\Services\Sms\SmsService;
+use App\Models\Transaction;
+use App\Services\Billing\Airtime\OrangeAirtimeService;
 
 /*
 |--------------------------------------------------------------------------
@@ -25,6 +27,14 @@ Route::get('/test-sms', function () {
     SmsService::updateSmsDeliveryStatus($smsMessage);
 
     return 'sms sent';
+});
+
+Route::get('/test-billing', function () {
+
+    $transaction = Transaction::find('9f0f5441-4e26-48e3-87f8-cf11aff4fe5f');
+    OrangeAirtimeService::billUsingAirtime('+26772882239', $transaction);
+
+    return 'billing completed';
 });
 
 Route::get('/test-invoice', function () {

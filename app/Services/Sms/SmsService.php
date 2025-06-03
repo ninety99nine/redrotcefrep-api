@@ -198,6 +198,15 @@ class SmsService
             $failureType = SmsFailureType::InternalFailure->value;
             $failureReason = 'Could not send sms due to fatal error';
 
+            Log::error('SMS Sending Fatal Error (Stage 0)', [
+                'code' => $e->getCode(),
+                'message' => $e->getMessage(),
+                'content' => $content,
+                'sender_name' => $senderName,
+                'sender_mobile_number' => $senderMobileNumber,
+                'recipient_mobile_number' => $recipientMobileNumber,
+            ]);
+
             $metadata = [
                 'failed_attempts' => [
                     [
@@ -311,6 +320,13 @@ class SmsService
 
                 }else{
 
+                    Log::error('SMS Token Generation API Error (Stage 1)', [
+                        'endpoint' => $endpoint,
+                        'attempts' => $attempts,
+                        'status_code' => $statusCode,
+                        'response' => $bodyAsArray ?? $bodyAsJson
+                    ]);
+
                     $failedAttempts[] = [
                         'attempts' => $attempts,
                         'status_code' => $statusCode,
@@ -326,7 +342,7 @@ class SmsService
                 $bodyAsJson = $response->getBody()->getContents();
                 $bodyAsArray = json_decode($bodyAsJson, true);
 
-                Log::warning('SMS Token Generation API Error', [
+                Log::error('SMS Token Generation API Error (Stage 2)', [
                     'endpoint' => $endpoint,
                     'attempts' => $attempts,
                     'status_code' => $statusCode,
@@ -343,7 +359,7 @@ class SmsService
 
             } catch (Throwable $e) {
 
-                Log::error('SMS Token Generation API Fatal Error', [
+                Log::error('SMS Token Generation API Fatal Error (Stage 3)', [
                     'attempt' => $attempts,
                     'code' => $e->getCode(),
                     'message' => $e->getMessage()
@@ -440,7 +456,7 @@ class SmsService
 
                 }else{
 
-                    Log::warning('SMS Sending API Error', [
+                    Log::error('SMS Sending API Error (Stage 1)', [
                         'message' => $message,
                         'senderName' => $senderName,
                         'senderMobileNumber' => $senderMobileNumber,
@@ -466,7 +482,7 @@ class SmsService
                 $bodyAsJson = $response->getBody()->getContents();
                 $bodyAsArray = json_decode($bodyAsJson, true);
 
-                Log::warning('SMS Sending API Error', [
+                Log::error('SMS Sending API Error (Stage 2)', [
                     'message' => $message,
                     'senderName' => $senderName,
                     'senderMobileNumber' => $senderMobileNumber,
@@ -486,7 +502,7 @@ class SmsService
 
             } catch (Throwable $e) {
 
-                Log::error('SMS Sending Fatal API Error', [
+                Log::error('SMS Sending Fatal API Error (Stage 3)', [
                     'message' => $message,
                     'senderName' => $senderName,
                     'senderMobileNumber' => $senderMobileNumber,
@@ -639,6 +655,12 @@ class SmsService
             $failureType = SmsFailureType::InternalFailure->value;
             $failureReason = 'Could not verify sms delivery due to fatal error';
 
+            Log::error('SMS Delivery Status Fatal Error (Stage 0)', [
+                'code' => $e->getCode(),
+                'message' => $e->getMessage(),
+                'sms_message_id' => $smsMessage->id
+            ]);
+
             $metadata = array_merge($smsMessage->metadata, [
                 'failed_attempts' => [
                     [
@@ -718,6 +740,13 @@ class SmsService
 
                 }else{
 
+                    Log::error('SMS Delivery Status API Error (Stage 1)', [
+                        'endpoint' => $endpoint,
+                        'attempts' => $attempts,
+                        'status_code' => $statusCode,
+                        'response' => $bodyAsArray ?? $bodyAsJson
+                    ]);
+
                     $failedAttempts[] = [
                         'attempts' => $attempts,
                         'status_code' => $statusCode,
@@ -733,7 +762,7 @@ class SmsService
                 $bodyAsJson = $response->getBody()->getContents();
                 $bodyAsArray = json_decode($bodyAsJson, true);
 
-                Log::warning('SMS Delivery Status API Error', [
+                Log::error('SMS Delivery Status API Error (Stage 2)', [
                     'smsMessage' => $smsMessage,
                     'endpoint' => $endpoint,
                     'attempts' => $attempts,
@@ -751,7 +780,7 @@ class SmsService
 
             } catch (Throwable $e) {
 
-                Log::warning('SMS Delivery Status API Fatal Error', [
+                Log::error('SMS Delivery Status API Fatal Error (Stage 3)', [
                     'smsMessage' => $smsMessage,
                     'attempt' => $attempts,
                     'code' => $e->getCode(),
