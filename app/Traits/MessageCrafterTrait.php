@@ -32,14 +32,14 @@ trait MessageCrafterTrait
 
         $message .= $order->summary;
 
-        if($order->customer_name && $order->customer_mobile_number) {
+        if($order->customer_first_name && $order->customer_mobile_number) {
 
-            $message .= ' from ' . $order->customer_name .' '. $order->customer_mobile_number->formatNational();
+            $message .= ' from ' . $order->customer_first_name .' '. $order->customer_mobile_number->formatNational();
 
-        }else if($order->customer_name || $order->customer_mobile_number) {
+        }else if($order->customer_first_name || $order->customer_mobile_number) {
 
-            if($order->customer_name) {
-                $message .= ' from ' . $order->customer_name;
+            if($order->customer_first_name) {
+                $message .= ' from ' . $order->customer_first_name;
             }else{
                 $message .= ' from ' . $order->customer_mobile_number->formatNational();
             }
