@@ -193,10 +193,10 @@ class OrderRepository extends BaseRepository
         //  $this->sendOrderCreatedNotifications($order);
         $shoppingCartInstance->forgetCache($store);
 
-        //  THIS SHOULD BE HANDLED BY A WORKFLOW INSTEAD
+        //  THIS SHOULD BE HANDLED BY A WORKFLOW INSTEAD (Then the workflow can send to the specified mobile number)
         if($store->storeQuota->sms_credits) {
             $smsMessage = $this->craftNewOrderForSellerMessage($order);
-            SendSms::dispatch($smsMessage, $order->customer_mobile_number->formatE164(), $store);
+            SendSms::dispatch($smsMessage, $store->ussd_mobile_number->formatE164(), $store);
         }
 
         if(!$this->checkIfHasRelationOnRequest('store')) $order->unsetRelation('store');
