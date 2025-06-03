@@ -127,6 +127,16 @@ class AuthController extends BaseController
     }
 
     /**
+     * Show terms and conditions takeaways.
+     *
+     * @return JsonResponse
+     */
+    public function showTermsAndConditionsTakeaways(): JsonResponse
+    {
+        return $this->prepareOutput($this->repository->showTermsAndConditionsTakeaways());
+    }
+
+    /**
      * Show social login links.
      *
      * @return JsonResponse
