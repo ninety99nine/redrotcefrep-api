@@ -26,6 +26,7 @@ use App\Models\Pivots\UserStoreAssociation;
 use Propaganistas\LaravelPhone\PhoneNumber;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use App\Models\Pivots\FriendGroupStoreAssociation;
+use App\Services\Ussd\UssdService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Store extends BaseModel
@@ -538,7 +539,7 @@ class Store extends BaseModel
      ***************************/
 
     protected $appends = [
-        'name_with_emoji', 'web_link'
+        'name_with_emoji', 'web_link', 'ussd_shortcode'
     ];
 
     public function nameWithEmoji(): Attribute
@@ -552,6 +553,13 @@ class Store extends BaseModel
     {
         return new Attribute(
             get: fn() => $this->alias ? config('app.FRONTEND_URI').'/'.$this->alias : null
+        );
+    }
+
+    protected function ussdShortcode(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->ussd_mobile_number == null ? null : UssdService::appendToMainShortcode($this->ussd_mobile_number->formatNational(), $this->ussd_mobile_number->getCountry())
         );
     }
 }

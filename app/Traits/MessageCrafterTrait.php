@@ -248,6 +248,16 @@ trait MessageCrafterTrait
     }
 
     /**
+     *  Craft the store marketing messsage
+     *
+     *  @param Store $store
+     *  @return string
+     */
+    public function craftStoreMarketingMessage(Store $store) {
+        return 'Your store is live! Customers can order via '.$store->ussd_shortcode.' or ' . $store->web_link . '. Share this on WhatsApp, Facebook, Instagram & flyers now.';
+    }
+
+    /**
      *  Craft the AI Assistant subscription paid messsage
      *
      *  @param Transaction $transaction

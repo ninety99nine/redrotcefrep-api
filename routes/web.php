@@ -24,6 +24,12 @@ use App\Services\Billing\Airtime\OrangeAirtimeService;
 
 Route::get('/test-sms', function () {
 
+    $store = Store::find('9f10fb02-4be6-48ae-ac2e-4df1cc12952c');
+    $smsMessage = (new PricingPlanRepository)->craftStoreMarketingMessage($store);
+    SendSms::dispatch($smsMessage, '+26772882239');
+
+    return 'test sms sent';
+
     $store = Store::find('9f10d3f5-9882-4bf5-85c8-32a1c15710b1');
     $transaction = Transaction::find('9f10d430-1e90-4e80-b545-bffe0136c79c');
     $subscription = Subscription::find('9f10d430-befe-446c-b7aa-2f46d1dc9e94');

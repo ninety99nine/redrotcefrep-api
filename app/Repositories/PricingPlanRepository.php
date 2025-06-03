@@ -534,6 +534,9 @@ class PricingPlanRepository extends BaseRepository
                 if($paymentMethod->isOrangeAirtime()) {
                     $smsMessage = $this->craftStoreSubscriptionPaidMessage($store, $transaction, $subscription);
                     SendSms::dispatch($smsMessage, $transaction->requestedByUser->mobile_number->formatE164());
+
+                    $smsMessage = $this->craftStoreMarketingMessage($store);
+                    SendSms::dispatch($smsMessage, $transaction->requestedByUser->mobile_number->formatE164());
                 }
             }
 
