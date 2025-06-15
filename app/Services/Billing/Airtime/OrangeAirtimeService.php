@@ -386,7 +386,7 @@ class OrangeAirtimeService
             $failureType = TransactionFailureType::INTERNAL_FAILURE->value;
             $failureReason = 'Could not process this transaction, please try again';
 
-            Log::error('Airtime Billing Fatal Error', [
+            Log::error('Airtime Billing Fatal Error (Stage 0)', [
                 'code' => $e->getCode(),
                 'message' => $e->getMessage(),
                 'msisdn' => $msisdn,
@@ -519,7 +519,7 @@ class OrangeAirtimeService
 
                 }else{
 
-                    Log::error('Airtime Billing Token Generation API Error', [
+                    Log::error('Airtime Billing Token Generation API Error (Stage 1)', [
                         'endpoint' => $endpoint,
                         'attempts' => $attempts,
                         'status_code' => $statusCode,
@@ -541,7 +541,7 @@ class OrangeAirtimeService
                 $bodyAsJson = $response->getBody()->getContents();
                 $bodyAsArray = json_decode($bodyAsJson, true);
 
-                Log::error('Airtime Billing Token Generation API Error', [
+                Log::error('Airtime Billing Token Generation API Error (Stage 2)', [
                     'endpoint' => $endpoint,
                     'attempts' => $attempts,
                     'status_code' => $statusCode,
@@ -558,7 +558,7 @@ class OrangeAirtimeService
 
             } catch (Throwable $e) {
 
-                Log::error('Airtime Billing Token Generation API Fatal Error', [
+                Log::error('Airtime Billing Token Generation API Fatal Error (Stage 3)', [
                     'attempt' => $attempts,
                     'code' => $e->getCode(),
                     'message' => $e->getMessage()

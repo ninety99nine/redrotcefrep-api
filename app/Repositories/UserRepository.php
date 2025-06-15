@@ -478,6 +478,14 @@ class UserRepository extends BaseRepository
 
         }
 
+        if(empty($filter) || in_array('activeAutoBillingSchedules', $filter)) {
+
+            $data['totalActiveAutoBillingSchedules'] = (new CacheManager(CacheName::TOTAL_ACTIVE_AUTO_BILLING_SCHEDULES))->append($userId)->remember($expiryAt, function() use ($user) {
+                return $user->autoBillingSchedules()->active()->count();
+            });
+
+        }
+
         return $data;
     }
 

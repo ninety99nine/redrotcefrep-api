@@ -2,6 +2,7 @@
 
 namespace App\Repositories;
 
+use App\Enums\CacheName;
 use Exception;
 use App\Models\Store;
 use App\Jobs\SendSms;
@@ -9,19 +10,24 @@ use App\Traits\AuthTrait;
 use Illuminate\View\View;
 use App\Models\Transaction;
 use App\Models\PricingPlan;
+use Illuminate\Support\Str;
 use App\Models\AiAssistant;
 use App\Models\PaymentMethod;
 use App\Traits\Base\BaseTrait;
 use App\Enums\PaymentMethodType;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use App\Traits\MessageCrafterTrait;
+use App\Enums\PricingPlanBillingType;
 use App\Enums\TransactionFailureType;
 use App\Enums\TransactionPaymentStatus;
 use Illuminate\Database\Eloquent\Builder;
 use App\Enums\TransactionVerificationType;
+use App\Helpers\CacheManager;
 use App\Http\Resources\TransactionResource;
 use App\Http\Resources\PricingPlanResources;
 use App\Http\Resources\PaymentMethodResources;
+use App\Models\User;
 use Illuminate\Validation\ValidationException;
 use App\Services\PhoneNumber\PhoneNumberService;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -174,8 +180,9 @@ class PricingPlanRepository extends BaseRepository
      */
     public function payPricingPlan(string $pricingPlanId, array $data): array
     {
-        $store = $aiAssistant = null;
+        $user = $store = $aiAssistant = null;
         $pricingPlan = PricingPlan::find($pricingPlanId);
+        $createdUsingAutoBilling = isset($data['auto_bill']) && $data['auto_bill'] == true;
         if(!$pricingPlan) return ['successful' => false, 'message' => 'This pricing plan does not exist'];
 
         if( $this->offersStoreSubscription($pricingPlan) ||
@@ -183,7 +190,7 @@ class PricingPlanRepository extends BaseRepository
             $this->offersEmailCredits($pricingPlan) ||
             $this->offersSmsCredits($pricingPlan)
         ) {
-            if(!isset($data['store_id'])) throw ValidationException::withMessages(['store_id' => 'The store id field is required']);
+            if(!isset($data['store_id']) || empty($data['store_id'])) throw ValidationException::withMessages(['store_id' => 'The store id field is required']);
             $store = Store::find($data['store_id']);
 
             if($store) {
@@ -195,10 +202,17 @@ class PricingPlanRepository extends BaseRepository
 
         }
 
+        if($createdUsingAutoBilling) {
+            $user = User::find($data['user_id']);
+            if(!$user) return ['successful' => false, 'message' => 'This user does not exist'];
+        }else{
+            $user = $this->getAuthUser();
+        }
+
         if( $this->offersAiAssistantSubscription($pricingPlan) ||
             $this->offersAiAssistantTopUpCredits($pricingPlan)) {
 
-            $aiAssistant = request()->current_user->aiAssistant()->first();
+            $aiAssistant = $user->aiAssistant;
             if(!$aiAssistant) return ['successful' => false, 'message' => 'This AI Assistant does not exist'];
 
         }
@@ -224,7 +238,7 @@ class PricingPlanRepository extends BaseRepository
 
         if(in_array($paymentMethod->type, $acceptablePaymentMethodTypes)) {
 
-            $transactionPayload = $this->prepareTransactionPayload($store, $aiAssistant, $pricingPlan, $paymentMethod);
+            $transactionPayload = $this->prepareTransactionPayload($user, $store, $aiAssistant, $pricingPlan, $paymentMethod, $createdUsingAutoBilling);
             $transaction = $this->getTransactionRepository()->authourize()->shouldReturnModel()->createTransaction($transactionPayload);
 
             $transaction->setRelation('owner', $pricingPlan);
@@ -253,7 +267,7 @@ class PricingPlanRepository extends BaseRepository
 
             }else if($paymentMethod->isOrangeAirtime()) {
 
-                $msisdn = $this->getAuthUser()->mobile_number->formatE164();
+                $msisdn = $user->mobile_number->formatE164();
                 $transaction = OrangeAirtimeService::billUsingAirtime($msisdn, $transaction);
 
                 if($transaction->payment_status == TransactionPaymentStatus::FAILED_PAYMENT->value) {
@@ -519,6 +533,8 @@ class PricingPlanRepository extends BaseRepository
     {
         if($this->offersSubscription($pricingPlan)) {
 
+            $storeSubscription = null;
+            $aiAssistantSubscription = null;
             $message = 'Subscription created';
 
             /** @var PaymentMethod $paymentMethod */
@@ -529,10 +545,10 @@ class PricingPlanRepository extends BaseRepository
 
             if($offersStoreSubscription) {
                 $storeSubscriptionPayload = $this->prepareStoreSubscriptionPayload($pricingPlan, $transaction);
-                $subscription = $this->getSubscriptionRepository()->shouldReturnModel()->createSubscription($storeSubscriptionPayload, $store);
+                $storeSubscription = $this->getSubscriptionRepository()->shouldReturnModel()->createSubscription($storeSubscriptionPayload, $store);
 
                 if($paymentMethod->isOrangeAirtime()) {
-                    $smsMessage = $this->craftStoreSubscriptionPaidMessage($store, $transaction, $subscription);
+                    $smsMessage = $this->craftStoreSubscriptionPaidMessage($store, $transaction, $storeSubscription);
                     SendSms::dispatch($smsMessage, $transaction->requestedByUser->mobile_number->formatE164());
 
                     $smsMessage = $this->craftStoreMarketingMessage($store);
@@ -542,12 +558,59 @@ class PricingPlanRepository extends BaseRepository
 
             if($offersAiAssistantSubscription) {
                 $aiAssistantSubscriptionPayload = $this->prepareAiAssistantSubscriptionPayload($pricingPlan, $transaction);
-                $subscription = $this->getSubscriptionRepository()->shouldReturnModel()->createSubscription($aiAssistantSubscriptionPayload, $aiAssistant);
+                $aiAssistantSubscription = $this->getSubscriptionRepository()->shouldReturnModel()->createSubscription($aiAssistantSubscriptionPayload, $aiAssistant);
 
                 if($paymentMethod->isOrangeAirtime()) {
-                    $smsMessage = $this->craftAIAssistantSubscriptionPaidMessage($transaction, $subscription);
+                    $smsMessage = $this->craftAIAssistantSubscriptionPaidMessage($transaction, $aiAssistantSubscription);
                     SendSms::dispatch($smsMessage, $transaction->requestedByUser->mobile_number->formatE164());
                 }
+            }
+
+            if(($storeSubscription || $aiAssistantSubscription) && $pricingPlan->billing_type == PricingPlanBillingType::RECURRING->value) {
+
+                $nextAttemptDate = $storeSubscription?->end_at ?? $aiAssistantSubscription?->end_at;
+
+                //  Auto billing schedule information
+                $autoBillingSchedule = [
+                    'active' => 1,
+                    'attempts' => 0,
+                    'store_id' => $store?->id,
+                    'pricing_plan_id' => $pricingPlan->id,
+                    'next_attempt_date' => $nextAttemptDate,
+                    'payment_method_id' => $paymentMethod->id,
+                    'user_id' => $transaction->requested_by_user_id
+                ];
+
+                //  Query the existing auto billing schedule (if any)
+                $existingAutoBillingSchedule = DB::table('auto_billing_schedules')->where([
+                    'store_id' => $store?->id,
+                    'pricing_plan_id' => $pricingPlan->id,
+                    'user_id' => $transaction->requested_by_user_id
+                ])->first();
+
+                //  If the auto billing schedule exists
+                if( $existingAutoBillingSchedule ) {
+
+                    $autoBillingSchedule['total_successful_attempts'] = $existingAutoBillingSchedule->total_successful_attempts + 1;
+
+                    //  Update existing auto billing schedule
+                    DB::table('auto_billing_schedules')->where([
+                        'store_id' => $store?->id,
+                        'pricing_plan_id' => $pricingPlan->id,
+                        'user_id' => $transaction->requested_by_user_id
+                    ])->update($autoBillingSchedule);
+
+                }else {
+
+                    $autoBillingSchedule['id'] = Str::uuid();
+
+                    //  Create a new auto billing schedule
+                    DB::table('auto_billing_schedules')->insert($autoBillingSchedule);
+
+                }
+
+                (new CacheManager(CacheName::TOTAL_ACTIVE_AUTO_BILLING_SCHEDULES))->append($autoBillingSchedule['user_id'])->forget();
+
             }
 
         }
@@ -611,27 +674,30 @@ class PricingPlanRepository extends BaseRepository
     /**
      * Prepare transaction payload.
      *
+     * @param User $user
      * @param Store|null $store
      * @param AiAssistant|null $aiAssistant
      * @param PricingPlan $pricingPlan
      * @param PaymentMethod $paymentMethod
+     * @param bool $createdUsingAutoBilling
      * @return array
      */
-    private function prepareTransactionPayload(Store|null $store, AiAssistant|null $aiAssistant, PricingPlan $pricingPlan, PaymentMethod $paymentMethod): array
+    private function prepareTransactionPayload(User $user, Store|null $store, AiAssistant|null $aiAssistant, PricingPlan $pricingPlan, PaymentMethod $paymentMethod, bool $createdUsingAutoBilling): array
     {
         return [
             'percentage' => 100,
             'store_id' => $store?->id,
             'owner_id' => $pricingPlan->id,
+            'requested_by_user_id' => $user->id,
             'currency' => $pricingPlan->currency,
             'ai_assistant_id' => $aiAssistant?->id,
             'amount' => $pricingPlan->price->amount,
             'payment_method_id' => $paymentMethod->id,
             'description' => $pricingPlan->description,
             'owner_type' => $pricingPlan->getResourceName(),
-            'requested_by_user_id' => $this->getAuthUser()->id,
+            'created_using_auto_billing' => $createdUsingAutoBilling,
             'payment_status' => TransactionPaymentStatus::PENDING_PAYMENT->value,
-            'verification_type' => TransactionVerificationType::AUTOMATIC->value,
+            'verification_type' => TransactionVerificationType::AUTOMATIC->value
         ];
     }
 

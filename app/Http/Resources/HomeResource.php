@@ -157,6 +157,10 @@ class HomeResource extends BaseResource
             new ResourceLink('show.social.media.icons', route('show.social.media.icons')),
             new ResourceLink('show.country.address.options', route('show.country.address.options')),
 
+            new ResourceLink('show.auto.billing.schedules', route('show.auto.billing.schedules')),
+            new ResourceLink('create.auto.billing.schedule', route('create.auto.billing.schedule')),
+            new ResourceLink('delete.auto.billing.schedules', route('delete.auto.billing.schedules')),
+
             new ResourceLink('inspect.shopping.cart', route('inspect.shopping.cart')),
         ];
     }

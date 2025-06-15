@@ -37,6 +37,8 @@ class UpdatePricingPlanRequest extends FormRequest
             'currency' => ['bail', 'sometimes', 'string', 'size:3', Rule::in(collect($this->supportedCurrencySymbols)->keys())],
             'price' => ['bail', 'sometimes','required', 'min:0', 'numeric', 'regex:/^\d+(\.\d{1,2})?$/'],
             'discount_percentage_rate' => ['bail', 'sometimes', 'min:1', 'max:100', 'numeric'],
+            'max_auto_billing_attempts' => ['bail', 'sometimes', 'min:1', 'max:10', 'numeric'],
+            'auto_billing_disabled_sms_message' => ['bail', 'sometimes', 'nullable', 'min:1', 'max:160'],
             'supports_web' => ['sometimes', 'boolean'],
             'supports_ussd' => ['sometimes', 'boolean'],
             'supports_mobile' => ['sometimes', 'boolean'],

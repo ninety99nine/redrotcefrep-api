@@ -6,13 +6,87 @@ use Carbon\Carbon;
 use App\Models\User;
 use App\Models\Order;
 use App\Models\Store;
-use App\Models\Subscription;
+use Illuminate\Support\Str;
+use App\Models\PricingPlan;
 use App\Models\Transaction;
+use App\Models\Subscription;
 use App\Traits\Base\BaseTrait;
+use App\Models\Base\BaseModel;
 
 trait MessageCrafterTrait
 {
     use BaseTrait;
+
+    /**
+     * Replace placeholders in the text with values from provided models.
+     *
+     * @param string $text The text containing placeholders like {{ modelName.attribute }}
+     * @param array<string, Model> $models An associative array of model instances (e.g., ['store' => $store, 'pricingPlan' => $pricingPlan])
+     * @return string The text with placeholders replaced by model attribute values
+     */
+    public function replacePlaceholders(string $text, array $models): string
+    {
+        // Find all placeholders like {{ modelName.attribute }}
+        preg_match_all('/{{(.*?)}}/', $text, $matches);
+        $placeholders = $matches[0]; // Full placeholders, e.g., {{ store.name }}
+        $keys = $matches[1]; // Keys, e.g., store.name, pricingPlan.name
+
+        $replacements = [];
+        foreach ($keys as $index => $key) {
+
+            // Trim whitespace and split the key into model and attribute
+            [$modelName, $attribute] = explode('.', trim($key), 2);
+
+            // Get the model instance by name (case-insensitive)
+            $modelInstance = $models[strtolower($modelName)] ?? null;
+
+            // Initialize value as empty string for fallback
+            $value = '';
+
+            if ($modelInstance instanceof BaseModel) {
+
+                // Handle accessors (methods) or casted attributes
+                if (method_exists($modelInstance, $attribute)) {
+                    // If the attribute is an accessor (e.g., a method), call it
+                    $value = $modelInstance->$attribute();
+                } elseif ($modelInstance->hasGetMutator($attribute)) {
+                    // Handle Laravel mutators (getAttributeNameAttribute)
+                    $value = $modelInstance->$attribute;
+                } elseif ($modelInstance->hasCast($attribute)) {
+                    // Handle casted attributes (e.g., Money, JsonToArray)
+                    $value = $modelInstance->getAttributes()[$attribute] ?? '';
+                } else {
+                    // Direct attribute access
+                    $value = $modelInstance->$attribute ?? '';
+                }
+
+            }
+
+            $replacements[$placeholders[$index]] = $value;
+        }
+
+        // Perform the replacement
+        return Str::replace(
+            array_keys($replacements),
+            array_values($replacements),
+            $text
+        );
+    }
+
+    /**
+     *  Craft the auto billing disabled message.
+     *
+     *  @param PricingPlan $pricingPlan
+     *  @return string
+     */
+    public function craftAutoBillingDisabledMessage(PricingPlan $pricingPlan) {
+
+        return $this->replacePlaceholders($pricingPlan->auto_billing_disabled_sms_message, [
+            'store' => $pricingPlan->store,
+            'pricingPlan' => $pricingPlan
+        ]);
+
+    }
 
     /**
      *  Craft the new order sms messsage to send to the seller

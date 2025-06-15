@@ -57,8 +57,9 @@ class PricingPlan extends BaseModel
 
     protected $fillable = [
         'active', 'name', 'type', 'description', 'billing_type', 'currency', 'price',
-        'discount_percentage_rate', 'supports_ussd', 'supports_mobile', 'supports_web',
-        'metadata', 'features', 'position'
+        'discount_percentage_rate', 'max_auto_billing_attempts', 'supports_ussd',
+        'supports_mobile', 'supports_web', 'metadata', 'features', 'position',
+        'auto_billing_disabled_sms_message'
     ];
 
     public function scopeSearch($query, $searchWord)

@@ -42,6 +42,7 @@ class CreateTransactionsTable extends Migration
 
             /*  Payment Method Information  */
             $table->foreignUuid('payment_method_id')->nullable();
+            $table->boolean('created_using_auto_billing')->default(0);
 
             /*  Customer Information  */
             $table->foreignUuid('customer_id')->nullable();

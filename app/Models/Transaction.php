@@ -64,7 +64,7 @@ class Transaction extends BaseModel
         'verification_type', 'manually_verified_by_user_id',
 
         /*  Payment Method Information  */
-        'payment_method_id',
+        'payment_method_id', 'created_using_auto_billing',
 
         /*  Customer Information  */
         'customer_id',
@@ -235,35 +235,6 @@ class Transaction extends BaseModel
     protected function getIsSubjectToAutomaticVerificationAttribute()
     {
         return $this->isSubjectToAutomaticVerification();
-    }
-
-    /**
-     * Expound failure reason
-     *
-     * @return Attribute
-     */
-    protected function failureReason(): Attribute
-    {
-        return Attribute::make(
-            get: function($value) {
-
-                if($this->failure_type == TransactionFailureType::INACTIVE_ACCOUNT->value) {
-
-                    return TransactionFailureReason::INACTIVE_ACCOUNT->value;
-
-                }else if($this->failure_type == TransactionFailureType::INSUFFICIENT_FUNDS->value) {
-
-                    return TransactionFailureReason::INSUFFICIENT_FUNDS->value;
-
-                }else if($this->failure_type == TransactionFailureType::USAGE_CONSUMPTION_MAIN_BALANCE_NOT_FOUND->value) {
-
-                    return TransactionFailureReason::USAGE_CONSUMPTION_MAIN_BALANCE_NOT_FOUND->value;
-
-                }
-
-                return $value;
-            }
-        );
     }
 
     /**

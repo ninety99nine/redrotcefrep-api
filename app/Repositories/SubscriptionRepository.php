@@ -289,9 +289,9 @@ class SubscriptionRepository extends BaseRepository
      * @param Carbon|null $startAt
      * @param string $frequency
      * @param int $duration
-     * @return Carbon
+     * @return Carbon|null
      */
-    public function calculateSubscriptionEndAt(Carbon|null $startAt, string $frequency, int $duration): Carbon
+    public function calculateSubscriptionEndAt(Carbon|null $startAt, string $frequency, int $duration): Carbon|null
     {
         $startAt = clone ($startAt ?? now());
 
@@ -307,6 +307,9 @@ class SubscriptionRepository extends BaseRepository
                 break;
             case 'year':
                 return $startAt->addYears($duration);
+                break;
+            default:
+                return null;
                 break;
         }
     }

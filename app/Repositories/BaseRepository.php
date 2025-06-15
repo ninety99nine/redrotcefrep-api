@@ -50,7 +50,7 @@ abstract class BaseRepository
      *
      * @return $this
      */
-    protected function authourize(): self
+    public function authourize(): self
     {
         $this->authourized = true;
         return $this;

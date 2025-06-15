@@ -31,8 +31,6 @@ class SendSms implements ShouldQueue
      */
     public function __construct($content, $recipientMobileNumber, $store = null)
     {
-        Log::info('SendSms __construct()');
-
         $this->store = $store;
         $this->content = $content;
         $this->recipientMobileNumber = $recipientMobileNumber;
@@ -45,8 +43,6 @@ class SendSms implements ShouldQueue
      */
     public function handle()
     {
-        Log::info('SendSms handle()');
-
         $smsEnabled = config('app.SMS_ENABLED');
 
         if($smsEnabled) {

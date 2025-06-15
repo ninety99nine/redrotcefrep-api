@@ -187,9 +187,14 @@ class User extends BaseAuthenticatable /* Authenticatable */
         return $this->belongsTo(User::class, 'assigned_to_user_id');
     }
 
+    public function autoBillingSchedules()
+    {
+        return $this->hasMany(AutoBillingSchedule::class);
+    }
+
     public function reviews()
     {
-        return $this->hasMany(Review::class);
+        return $this->hasMany(AutoBillingSchedule::class);
     }
 
     public function friends()
