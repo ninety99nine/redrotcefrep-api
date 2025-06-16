@@ -2,6 +2,7 @@
 
 namespace App\Traits;
 
+use App\Models\AutoBillingSchedule;
 use Carbon\Carbon;
 use App\Models\User;
 use App\Models\Order;
@@ -76,13 +77,16 @@ trait MessageCrafterTrait
     /**
      *  Craft the auto billing disabled message.
      *
-     *  @param PricingPlan $pricingPlan
+     *  @param AutoBillingSchedule $autoBillingSchedule
      *  @return string
      */
-    public function craftAutoBillingDisabledMessage(PricingPlan $pricingPlan) {
+    public function craftAutoBillingDisabledMessage(AutoBillingSchedule $autoBillingSchedule) {
+
+        $store = $autoBillingSchedule->store;
+        $pricingPlan = $autoBillingSchedule->pricingPlan;
 
         return $this->replacePlaceholders($pricingPlan->auto_billing_disabled_sms_message, [
-            'store' => $pricingPlan->store,
+            'store' => $store,
             'pricingPlan' => $pricingPlan
         ]);
 

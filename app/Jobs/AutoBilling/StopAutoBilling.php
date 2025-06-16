@@ -41,7 +41,7 @@ class StopAutoBilling implements ShouldQueue, ShouldBeUnique
      */
     public function __construct(AutoBillingSchedule $autoBillingSchedule)
     {
-        $this->autoBillingSchedule = $autoBillingSchedule->load(['user', 'pricingPlan']);
+        $this->autoBillingSchedule = $autoBillingSchedule->load(['user', 'store', 'pricingPlan']);
     }
 
     /**
@@ -64,7 +64,7 @@ class StopAutoBilling implements ShouldQueue, ShouldBeUnique
 
             if(!empty($pricingPlan->auto_billing_disabled_sms_message)) {
 
-                $smsMessage = $this->craftAutoBillingDisabledMessage($pricingPlan);
+                $smsMessage = $this->craftAutoBillingDisabledMessage($this->autoBillingSchedule);
                 SendSms::dispatch($smsMessage, $user->mobile_number->formatE164());
 
             }

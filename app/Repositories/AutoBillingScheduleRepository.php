@@ -106,7 +106,7 @@ class AutoBillingScheduleRepository extends BaseRepository
      */
     public function updateAutoBillingSchedule(AutoBillingSchedule|string $autoBillingScheduleId, array $data): AutoBillingSchedule|array
     {
-        $autoBillingSchedule = AutoBillingSchedule::with(['user', 'pricingPlan'])->find($autoBillingScheduleId);
+        $autoBillingSchedule = AutoBillingSchedule::with(['user', 'store', 'pricingPlan'])->find($autoBillingScheduleId);
 
         if(!$this->isAuthourized() && $autoBillingSchedule->user_id != request()->auth_user->id) return ['updated' => false, 'message' => 'You do not have permission to update auto billing schedule'];
 
@@ -120,7 +120,7 @@ class AutoBillingScheduleRepository extends BaseRepository
 
             if(!empty($pricingPlan->auto_billing_disabled_sms_message)) {
 
-                $smsMessage = $this->craftAutoBillingDisabledMessage($pricingPlan);
+                $smsMessage = $this->craftAutoBillingDisabledMessage($autoBillingSchedule);
                 SendSms::dispatch($smsMessage, $user->mobile_number->formatE164());
 
             }
