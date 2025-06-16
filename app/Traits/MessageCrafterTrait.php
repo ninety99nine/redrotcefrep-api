@@ -2,7 +2,6 @@
 
 namespace App\Traits;
 
-use App\Models\AutoBillingSchedule;
 use Carbon\Carbon;
 use App\Models\User;
 use App\Models\Order;
@@ -13,6 +12,7 @@ use App\Models\Transaction;
 use App\Models\Subscription;
 use App\Traits\Base\BaseTrait;
 use App\Models\Base\BaseModel;
+use App\Models\AutoBillingSchedule;
 
 trait MessageCrafterTrait
 {
@@ -39,12 +39,13 @@ trait MessageCrafterTrait
             [$modelName, $attribute] = explode('.', trim($key), 2);
 
             // Get the model instance by name (case-insensitive)
-            $modelInstance = $models[strtolower($modelName)] ?? null;
+            $modelInstance = $models[$modelName] ?? null;
 
             // Initialize value as empty string for fallback
             $value = '';
 
             if ($modelInstance instanceof BaseModel) {
+
 
                 // Handle accessors (methods) or casted attributes
                 if (method_exists($modelInstance, $attribute)) {
